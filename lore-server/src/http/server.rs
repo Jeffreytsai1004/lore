@@ -112,9 +112,10 @@ pub fn create_router(
         // Do not process request that have more than 10 MiB in the body
         .layer(DefaultBodyLimit::max(shared_state.max_file_size as usize))
         .layer(CorrelationIdLayerBuilder::new().with_http_tracer().build())
-        .layer(tower_http::timeout::TimeoutLayer::new(Duration::from_secs(
-            settings.request_timeout_seconds,
-        )))
+        .layer(tower_http::timeout::TimeoutLayer::with_status_code(
+            axum::http::StatusCode::REQUEST_TIMEOUT,
+            Duration::from_secs(settings.request_timeout_seconds),
+        ))
         .layer(tower_http::timeout::RequestBodyTimeoutLayer::new(
             Duration::from_secs(settings.request_body_timeout_seconds),
         ))
