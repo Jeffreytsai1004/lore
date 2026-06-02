@@ -1,0 +1,85 @@
+# Manual additions for the third-party notices generator.
+#
+# Each [[entry]] declares a non-Cargo vendored source that ships inside one or
+# more redistributed Lore binaries. The Cargo dep-graph walk that cargo-about
+# performs cannot see these sources, so the local notices flow merges them in
+# after the upstream generator runs.
+#
+# Fields:
+#   name        - the source's canonical name
+#   version     - the source's version string, read from the vendored source
+#                 at the time the entry is authored
+#   spdx        - the source's SPDX license expression
+#   license     - workspace-relative path to the license-text file vendored
+#                 alongside the source
+#   binaries    - either a list of binary names from {loreserver, lore,
+#                 liblore}, or the sentinel "all" meaning every redistributed
+#                 binary
+#
+# Add a new entry whenever a `build.rs` pulls in a vendored native source
+# whose object code ships inside a redistributed binary. Place the license
+# file next to the source under `*/native/thirdparty/<source>/` and reference
+# it from this file. CR reviewers tie `build.rs` edits to manual-additions
+# edits — see notices/README.md.
+
+[[entry]]
+name = "rpmalloc"
+version = "1.4.5"
+# rpmalloc is dedicated to the public domain by its author; its LICENSE file is
+# verbatim 0BSD (the public-domain-equivalent grant).
+spdx = "0BSD"
+license = "lore-base/native/thirdparty/rpmalloc/LICENSE"
+binaries = "all"
+
+# Override entries replace a Cargo crate's rendered license block. cargo-about
+# cannot resolve the real license text for these crates: each ships no license
+# file in its published crate, and a git clarification cannot reach the file
+# (governor and asn1-rs-impl have `.git`-suffixed repository URLs that cargo-
+# about 0.9.0 does not normalise; linux-keyutils ships no license file in its
+# repository at all). The real text is vendored under notices/license-overrides/
+# and the merge step removes the crate's placeholder block and re-renders it
+# under the SPDX group below with the vendored text.
+#
+# Fields: name, version (must match the resolved crate version cargo-about
+# emits), spdx (the license group to render under), license (workspace-relative
+# path to the vendored text). An override only applies when the crate actually
+# appears in the binary being rendered; if absent, it is skipped.
+#
+# governor and asn1-rs-impl carry the real upstream MIT copyright. (bitcode_derive
+# is also MIT with no shipped file, but its repository has no `.git` suffix, so it
+# is resolved by a git clarify in about.toml rather than a vendored override.)
+# linux-keyutils ("Apache-2.0 OR MIT", no notice anywhere), objc2-core-foundation,
+# and objc2-io-kit ("Zlib OR Apache-2.0 OR MIT", part of the madsmtm/objc2
+# monorepo, ship no per-work copyright line) all render under Apache-2.0 from
+# their disjunction, whose canonical text needs no per-work copyright line; they
+# share the vendored canonical Apache-2.0 text.
+
+[[override]]
+name = "governor"
+version = "0.10.4"
+spdx = "MIT"
+license = "notices/license-overrides/governor.LICENSE"
+
+[[override]]
+name = "asn1-rs-impl"
+version = "0.2.0"
+spdx = "MIT"
+license = "notices/license-overrides/asn1-rs-impl.LICENSE"
+
+[[override]]
+name = "linux-keyutils"
+version = "0.2.5"
+spdx = "Apache-2.0"
+license = "notices/license-overrides/canonical-apache-2.0.LICENSE"
+
+[[override]]
+name = "objc2-core-foundation"
+version = "0.3.2"
+spdx = "Apache-2.0"
+license = "notices/license-overrides/canonical-apache-2.0.LICENSE"
+
+[[override]]
+name = "objc2-io-kit"
+version = "0.3.2"
+spdx = "Apache-2.0"
+license = "notices/license-overrides/canonical-apache-2.0.LICENSE"

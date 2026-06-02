@@ -1,0 +1,14 @@
+Third-party notices
+Binary: __LORE_BINARY__
+Target: __LORE_TARGET__
+Release version: __LORE_RELEASE_VERSION__
+
+================================================================================
+{{#each licenses}}{{#if first_of_kind}}
+<!-- LORE-NOTICES-SECTION: {{id}} -->
+License: {{{id}}} ({{{name}}})
+
+{{/if}}{{#each used_by}}-- {{{crate.name}}} {{{crate.version}}} --
+{{{../text}}}
+
+{{/each}}{{/each}}

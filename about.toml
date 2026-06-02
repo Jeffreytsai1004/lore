@@ -1,0 +1,283 @@
+# Policy file for the third-party notices generator (cargo-about).
+#
+# The accepted list mirrors the allow-list in `deny.toml` but is ordered as the
+# dual-license preference order. When a crate's license expression is a
+# disjunction (for example `MIT OR Apache-2.0`), cargo-about selects the first
+# entry from this list that satisfies the expression. Edit this list and
+# `deny.toml`'s `[licenses].allow` list together in any CR that changes either.
+
+# Workspace crates do not declare a `license` field and are not redistributed
+# under an SPDX license; skip them, matching `deny.toml`'s [licenses.private]
+# block.
+private = { ignore = true }
+
+accepted = [
+    "MIT",
+    "Apache-2.0",
+    "ISC",
+    "BSD-3-Clause",
+    "BSD-2-Clause",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "BSL-1.0",
+    "Zlib",
+    "CDLA-Permissive-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+]
+
+# ring 0.17.x ships ISC for its own code (LICENSE-other-bits, Brian Smith) and
+# Apache-2.0 for the vendored BoringSSL code (LICENSE-BoringSSL). The plain
+# LICENSE file is only a pointer to those two, so bind both real files and give
+# each its own SPDX id so the texts group correctly. ring ships no MIT or
+# OpenSSL text; the `MIT AND ISC AND OpenSSL` expression still in deny.toml
+# predates ring's relicensing and should be reconciled there separately. The
+# Go and Chromium (BSD) sections in LICENSE-BoringSSL cover test-only code that
+# the file itself states is not triggered by redistributing linked binaries.
+[ring.clarify]
+license = "ISC AND Apache-2.0"
+
+[[ring.clarify.files]]
+path = "LICENSE-other-bits"
+license = "ISC"
+checksum = "f025ccfb7dfb6bdfedc75ca0f67acc69e6fb4998143d834f7c2f38a29989680f"
+
+[[ring.clarify.files]]
+path = "LICENSE-BoringSSL"
+license = "Apache-2.0"
+checksum = "005fc765ddc5115da796cca915baa9557abae13ff35e0a47c47affc56f6c414d"
+
+# linux-keyutils declares "Apache-2.0 OR MIT" and ships no license file in its
+# repository at all. It is handled through the vendored override mechanism
+# (notices/manual-additions.toml [[override]]) as Apache-2.0: the canonical
+# Apache-2.0 text is complete on its own and carries no per-work copyright line,
+# so it needs no crate-specific notice. cargo-about's per-crate accepted list
+# does not reorder the disjunction render, so the override is the reliable path.
+
+# tonic-prost and tonic-prost-build ship no license file in their published
+# crates, but the tonic monorepo (github.com/hyperium/tonic, no `.git` suffix
+# so cargo-about's git fetch reaches it) carries the MIT LICENSE
+# ("Copyright (c) 2025 Lucio Franco"). Fetch it from each crate's published
+# commit; the checksum gates the content.
+[tonic-prost.clarify]
+license = "MIT"
+
+[[tonic-prost.clarify.git]]
+path = "LICENSE"
+checksum = "e24a56698aa6feaf3a02272b3624f9dc255d982970c5ed97ac4525a95056a5b3"
+
+[tonic-prost-build.clarify]
+license = "MIT"
+
+[[tonic-prost-build.clarify.git]]
+path = "LICENSE"
+checksum = "e24a56698aa6feaf3a02272b3624f9dc255d982970c5ed97ac4525a95056a5b3"
+
+# bitcode_derive ships no license file in its published crate, but the bitcode
+# monorepo (github.com/SoftbearStudios/bitcode, no `.git` suffix) carries the
+# MIT LICENSE-MIT ("Copyright (c) 2023 Softbear Games") at its root. Fetch it
+# from bitcode_derive's published commit; the checksum gates the content.
+[bitcode_derive.clarify]
+license = "MIT"
+
+[[bitcode_derive.clarify.git]]
+path = "LICENSE-MIT"
+checksum = "d3419a82898ce3b9b1360f8d3e646e32fc7609619cbe3d8428197d7d059f7aa5"
+
+# governor and asn1-rs-impl ship no license file in their published crates, and
+# their repository URLs end in `.git`, which cargo-about 0.9.0 does not strip
+# before building the raw.githubusercontent.com path (it requests a 404). So a
+# git clarification cannot reach them. Their real license text is vendored under
+# notices/license-overrides/ and spliced in by the merge step instead; see
+# notices/manual-additions.toml [[override]] entries.
+
+# The windows-* family is dual-licensed "MIT OR Apache-2.0" and ships the real
+# MIT text in a lowercase `license-mit` file whose leading indentation defeats
+# cargo-about's content scanner, so each would otherwise render the canonical
+# MIT template with an unfilled copyright line. Every crate ships byte-identical
+# Microsoft MIT text (one checksum), and a clarify keyed on the crate name covers
+# all resolved versions. New windows-* crates must be added here; the final
+# placeholder gate in generate-notices.sh flags any that are missing.
+[windows.clarify]
+license = "MIT"
+[[windows.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows-collections.clarify]
+license = "MIT"
+[[windows-collections.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows-core.clarify]
+license = "MIT"
+[[windows-core.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows-future.clarify]
+license = "MIT"
+[[windows-future.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows-implement.clarify]
+license = "MIT"
+[[windows-implement.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows-interface.clarify]
+license = "MIT"
+[[windows-interface.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows-link.clarify]
+license = "MIT"
+[[windows-link.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows-numerics.clarify]
+license = "MIT"
+[[windows-numerics.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows-registry.clarify]
+license = "MIT"
+[[windows-registry.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows-result.clarify]
+license = "MIT"
+[[windows-result.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows-strings.clarify]
+license = "MIT"
+[[windows-strings.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows-sys.clarify]
+license = "MIT"
+[[windows-sys.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows-targets.clarify]
+license = "MIT"
+[[windows-targets.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows-threading.clarify]
+license = "MIT"
+[[windows-threading.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows_aarch64_gnullvm.clarify]
+license = "MIT"
+[[windows_aarch64_gnullvm.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows_aarch64_msvc.clarify]
+license = "MIT"
+[[windows_aarch64_msvc.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows_i686_gnu.clarify]
+license = "MIT"
+[[windows_i686_gnu.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows_i686_gnullvm.clarify]
+license = "MIT"
+[[windows_i686_gnullvm.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows_i686_msvc.clarify]
+license = "MIT"
+[[windows_i686_msvc.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows_x86_64_gnu.clarify]
+license = "MIT"
+[[windows_x86_64_gnu.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows_x86_64_gnullvm.clarify]
+license = "MIT"
+[[windows_x86_64_gnullvm.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows_x86_64_msvc.clarify]
+license = "MIT"
+[[windows_x86_64_msvc.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+
+# expect-json ships its MIT text in LICENSE with the real copyright line, but
+# cargo-about prints the canonical MIT template instead. Bind the shipped file.
+[expect-json.clarify]
+license = "MIT"
+
+[[expect-json.clarify.files]]
+path = "LICENSE"
+checksum = "256bc3d7819a6ca47fdc51443c5c89ae8360f53b4132ba1ebd9d4c1b0b5210a2"
+
+# async-stream and its proc-macro sibling async-stream-impl ship an identical
+# LICENSE carrying "Copyright (c) 2019 Carl Lerche".
+[async-stream.clarify]
+license = "MIT"
+
+[[async-stream.clarify.files]]
+path = "LICENSE"
+checksum = "157d381f6304eba77459fc10dfb5b1b22fc0d04e384a32865f32d8e67a34c0eb"
+
+[async-stream-impl.clarify]
+license = "MIT"
+
+[[async-stream-impl.clarify.files]]
+path = "LICENSE"
+checksum = "157d381f6304eba77459fc10dfb5b1b22fc0d04e384a32865f32d8e67a34c0eb"
+
+# libm ships its MIT text in LICENSE.txt.
+[libm.clarify]
+license = "MIT"
+
+[[libm.clarify.files]]
+path = "LICENSE.txt"
+checksum = "3823dda7cf046602f4b4e77ec8e227863dc4736037cc85bb33d9f19febe16bb7"
+
+# chrono is dual-licensed MIT OR Apache-2.0; its LICENSE.txt is a combined
+# notice carrying "Kang Seonghoon and contributors". Pick MIT from the
+# disjunction and bind the real file.
+[chrono.clarify]
+license = "MIT"
+
+[[chrono.clarify.files]]
+path = "LICENSE.txt"
+checksum = "946c9835d8034d24404f8cfec5f4654cee5dad17e944afc3d06d742cf2882831"
+
+# siphasher is dual-licensed; its COPYING file carries the real copyright
+# lines for The Rust Project Developers and Frank Denis. Pick MIT and bind it.
+[siphasher.clarify]
+license = "MIT"
+
+[[siphasher.clarify.files]]
+path = "COPYING"
+checksum = "c962ee4d1d05ddc138b202b2540219ebc57893fcf97b364852094a9a94ce1365"
