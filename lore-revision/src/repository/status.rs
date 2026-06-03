@@ -36,7 +36,9 @@ use crate::lore_drain_tasks;
 use crate::lore_trace;
 use crate::metadata::Metadata;
 use crate::node::NodeFlags;
+use crate::node::NodeID;
 use crate::node::NodeIDExt;
+use crate::node::ROOT_NODE;
 use crate::path::emit_path_ignore;
 use crate::state;
 use crate::util::path::RelativePath;
@@ -188,6 +190,18 @@ impl LoreRepositoryStatusFileEventData {
     }
 }
 
+#[repr(C)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct LoreRepositoryStatusCountEventData {
+    /// Number of directories in the tree, view-filtered (staged state if
+    /// present, otherwise the current revision)
+    pub directories: u64,
+    /// Number of files in the tree, view-filtered (staged state if present,
+    /// otherwise the current revision)
+    pub files: u64,
+}
+
 #[error_set]
 pub enum StatusError {
     NodeNotFound,
@@ -284,6 +298,9 @@ pub struct StatusOptions {
     pub sync_point: bool,
     // Only emit revision info, skip all diffs
     pub revision_only: bool,
+    // Count directories and files (view-filtered) in the staged state if
+    // present, otherwise the current revision
+    pub count: bool,
 }
 
 async fn file_size_from_node_change_id(change: &NodeChange) -> Result<u64, StatusError> {
@@ -318,6 +335,78 @@ async fn file_size_from_node_change_path(
         let size = metadata.size();
         Ok(size)
     }
+}
+
+/// Recursively count directories and files under `parent_node_id` in `state`,
+/// honoring the repository's local view filter. A link node is counted as a
+/// directory and descended into (resolved to its target repository/revision).
+/// Returns `(directories, files)`.
+async fn count_tree(
+    state: Arc<state::State>,
+    repository: Arc<RepositoryContext>,
+    parent_node_id: NodeID,
+    parent_path: RelativePath,
+) -> Result<(u64, u64), StatusError> {
+    let mut directories = 0u64;
+    let mut files = 0u64;
+
+    let mut children = state::StateNodeChildrenWithNameIterator::new(
+        state.clone(),
+        repository.clone(),
+        parent_node_id,
+    )
+    .await
+    .forward::<StatusError>("iterating revision tree children")?;
+
+    while let Some((child_id, child_node, child_name)) = children
+        .next()
+        .await
+        .forward::<StatusError>("reading revision tree node")?
+    {
+        let is_directory = child_node.is_directory();
+        let is_link = child_node.is_link();
+        let child_path = parent_path.push_into_buf(child_name).freeze();
+
+        if repository
+            .filter
+            .excludes(&child_path, is_directory || is_link, FilterMode::View)
+        {
+            continue;
+        }
+
+        if is_directory {
+            directories += 1;
+            let (sub_directories, sub_files) = Box::pin(count_tree(
+                state.clone(),
+                repository.clone(),
+                child_id,
+                child_path,
+            ))
+            .await?;
+            directories += sub_directories;
+            files += sub_files;
+        } else if is_link {
+            directories += 1;
+            let link = child_node.linked_node();
+            let (link_repository, link_state) = link
+                .resolve(repository.clone(), state.clone())
+                .await
+                .forward::<StatusError>("resolving link target for count")?;
+            let (sub_directories, sub_files) = Box::pin(count_tree(
+                link_state,
+                link_repository,
+                link.node,
+                child_path,
+            ))
+            .await?;
+            directories += sub_directories;
+            files += sub_files;
+        } else if child_node.is_file() {
+            files += 1;
+        }
+    }
+
+    Ok((directories, files))
 }
 
 pub async fn status(
@@ -591,6 +680,22 @@ pub async fn status(
         );
         lore_debug!("Repository status: {data:?}");
         event::LoreEvent::RepositoryStatusRevision(data).send();
+    }
+
+    if options.count {
+        let (directories, files) = count_tree(
+            state_staged.clone(),
+            repository.clone(),
+            ROOT_NODE,
+            RelativePath::default(),
+        )
+        .await?;
+        lore_debug!("Repository size: {directories} directories, {files} files");
+        event::LoreEvent::RepositoryStatusCount(LoreRepositoryStatusCountEventData {
+            directories,
+            files,
+        })
+        .send();
     }
 
     if options.revision_only {

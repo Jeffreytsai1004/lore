@@ -307,6 +307,7 @@ include = [
 "LoreRepositoryStateDumpEventData" = "lore_repository_state_dump_event_data_t"
 "LoreRepositoryStateDumpNodeEventData" = "lore_repository_state_dump_node_event_data_t"
 "LoreRepositoryStatusArgs" = "lore_repository_status_args_t"
+"LoreRepositoryStatusCountEventData" = "lore_repository_status_count_event_data_t"
 "LoreRepositoryStatusFileEventData" = "lore_repository_status_file_event_data_t"
 "LoreRepositoryStatusRevisionEventData" = "lore_repository_status_revision_event_data_t"
 "LoreRepositoryStoreImmutableQueryArgs" = "lore_repository_store_immutable_query_args_t"

@@ -105,6 +105,7 @@ mod tests {
             reset: 0,
             sync_point: 0,
             revision_only: 0,
+            count: 0,
             paths: LoreArray::default(),
         };
         let result = lore::repository::status(globals.clone(), args, callback).await;
@@ -203,6 +204,7 @@ mod tests {
             reset: 0,
             sync_point: 0,
             revision_only: 0,
+            count: 0,
             paths: LoreArray::default(),
         };
         let result = lore::repository::status(globals.clone(), args, callback).await;

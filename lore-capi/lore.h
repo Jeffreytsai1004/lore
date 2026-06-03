@@ -1124,6 +1124,15 @@ typedef struct lore_repository_status_file_event_data_t {
   struct lore_string_t from_path;
 } lore_repository_status_file_event_data_t;
 
+typedef struct lore_repository_status_count_event_data_t {
+  // Number of directories in the tree, view-filtered (staged state if
+  // present, otherwise the current revision)
+  uint64_t directories;
+  // Number of files in the tree, view-filtered (staged state if present,
+  // otherwise the current revision)
+  uint64_t files;
+} lore_repository_status_count_event_data_t;
+
 typedef struct lore_repository_store_immutable_query_event_data_t {
   // Address of fragment
   struct lore_address_t address;
@@ -1783,6 +1792,7 @@ enum lore_event_id_t {
   LORE_EVENT_REPOSITORY_STATE_DUMP_NODE,
   LORE_EVENT_REPOSITORY_STATUS_REVISION,
   LORE_EVENT_REPOSITORY_STATUS_FILE,
+  LORE_EVENT_REPOSITORY_STATUS_COUNT,
   LORE_EVENT_REPOSITORY_STORE_IMMUTABLE_QUERY,
   LORE_EVENT_REVISION_COMMIT_BEGIN,
   LORE_EVENT_REVISION_COMMIT_PROGRESS,
@@ -2000,6 +2010,7 @@ typedef struct lore_event_t {
     struct lore_repository_state_dump_node_event_data_t repository_state_dump_node;
     struct lore_repository_status_revision_event_data_t repository_status_revision;
     struct lore_repository_status_file_event_data_t repository_status_file;
+    struct lore_repository_status_count_event_data_t repository_status_count;
     struct lore_repository_store_immutable_query_event_data_t repository_store_immutable_query;
     struct lore_revision_commit_begin_event_data_t revision_commit_begin;
     struct lore_revision_commit_progress_event_data_t revision_commit_progress;
@@ -2719,6 +2730,9 @@ typedef struct lore_repository_status_args_t {
   uint8_t sync_point;
   // Only emit revision info, skip all diffs
   uint8_t revision_only;
+  // Count directories and files (view-filtered) in the staged state if
+  // present, otherwise the current revision
+  uint8_t count;
   // Optional path to limit status check to
   struct lore_string_array_t paths;
 } lore_repository_status_args_t;

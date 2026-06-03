@@ -7,6 +7,7 @@ import pytest
 from test_utils import posix_join
 
 from lore import Lore
+from lore_parsers import parse_status_count_json
 
 logger = logging.getLogger(__name__)
 
@@ -295,4 +296,152 @@ def test_status_revision_only(new_lore_repo):
     )
     assert "Untracked files:" not in output, (
         "revision-only should not show untracked files"
+    )
+
+
+@pytest.mark.smoke
+def test_status_count(new_lore_repo, tmp_path_factory):
+    """`status --count` reports the directory and file totals of the tree.
+
+    Covers: the full-tree total; agreement between `--count` and `--count
+    --scan` (a single shared traversal); that no count event is emitted without
+    `--count`; that the local view filter is honored (a view-filtered clone
+    counts only its materialized subtree, not the filtered-out parts of the
+    committed tree); the human-readable "Repository size" line; and that a
+    staged add is reflected (the count walks the staged state when present).
+    """
+    repo: Lore = new_lore_repo()
+
+    repo.make_dirs("included")
+    repo.make_dirs("excluded")
+    for name in ("a.txt", "b.txt"):
+        with repo.open_file(posix_join("included", name), "w+b") as f:
+            f.write(os.urandom(64))
+    for name in ("x.txt", "y.txt"):
+        with repo.open_file(posix_join("excluded", name), "w+b") as f:
+            f.write(os.urandom(64))
+    with repo.open_file("root.txt", "w+b") as f:
+        f.write(os.urandom(64))
+
+    repo.stage(scan=True)
+    repo.commit()
+    repo.push()
+
+    count = parse_status_count_json(repo.status(count=True, json=True))
+    assert count is not None, "Expected a repositoryStatusCount event with --count"
+    assert count["directories"] == 2, f"Expected 2 directories, got {count}"
+    assert count["files"] == 5, f"Expected 5 files, got {count}"
+
+    count_scan = parse_status_count_json(repo.status(count=True, scan=True, json=True))
+    assert count_scan is not None, "Expected a count event with --count --scan"
+    assert count_scan["directories"] == 2 and count_scan["files"] == 5, (
+        f"--count --scan disagreed with --count: {count_scan}"
+    )
+
+    assert parse_status_count_json(repo.status(json=True)) is None, (
+        "Count event emitted without --count"
+    )
+
+    view_dir = tmp_path_factory.mktemp("view")
+    view_path = os.path.join(view_dir, "view.txt")
+    with open(view_path, "w+") as view_file:
+        view_file.write("**\n")
+        view_file.write("!included/**\n")
+    clone: Lore = repo.clone(view=view_path)
+
+    clone_count = parse_status_count_json(clone.status(count=True, json=True))
+    assert clone_count is not None, "Expected a count event in the view-filtered clone"
+    assert clone_count["directories"] == 1, (
+        f"View filter ignored: expected only included/ (1 dir), got {clone_count}"
+    )
+    assert clone_count["files"] == 2, (
+        f"View filter ignored: expected only included/ files (2), got {clone_count}"
+    )
+
+    assert "Repository size: 1 directories, 2 files" in clone.status(count=True), (
+        "Unexpected repository size line in human-readable --count output"
+    )
+
+    with clone.open_file(posix_join("included", "c.txt"), "w+b") as f:
+        f.write(os.urandom(64))
+    clone.stage(posix_join("included", "c.txt"))
+    staged_count = parse_status_count_json(clone.status(count=True, json=True))
+    assert staged_count is not None, "Expected a count event after staging"
+    assert staged_count["directories"] == 1 and staged_count["files"] == 3, (
+        f"Staged add not reflected (count should walk the staged state): {staged_count}"
+    )
+
+
+@pytest.mark.smoke
+def test_status_count_link(new_lore_repo, tmp_path_factory):
+    """`status --count` counts a link mount as a directory, descends only into
+    the linked subtree (honoring path remapping), and applies the local view
+    filter to the linked content via the remapped mount path.
+
+    The target repository holds a `mounted/` subtree (`top.txt`, `keep/k.txt`,
+    `drop/d.txt`) that is linked, plus unrelated `unmounted/` and `loose.txt`
+    that are not. The link remaps the target's `mounted/` to a differently
+    named `lk/` in the main repository.
+
+    Without a view filter the count covers only `lk` and the linked subtree
+    alongside `root.txt` — 3 directories, 4 files — never the target's
+    unmounted entries. A view-filtered clone that re-includes `root.txt` and
+    `lk/**` but excludes `lk/drop/` drops exactly that part of the linked
+    subtree — 2 directories, 3 files — proving the view filter reaches inside
+    the link via the mount path.
+    """
+    link_repo: Lore = new_lore_repo()
+    link_repo.make_dirs(posix_join("mounted", "keep"))
+    link_repo.make_dirs(posix_join("mounted", "drop"))
+    with link_repo.open_file(posix_join("mounted", "top.txt"), "w+b") as f:
+        f.write(os.urandom(64))
+    with link_repo.open_file(posix_join("mounted", "keep", "k.txt"), "w+b") as f:
+        f.write(os.urandom(64))
+    with link_repo.open_file(posix_join("mounted", "drop", "d.txt"), "w+b") as f:
+        f.write(os.urandom(64))
+    link_repo.make_dirs("unmounted")
+    with link_repo.open_file(posix_join("unmounted", "u.txt"), "w+b") as f:
+        f.write(os.urandom(64))
+    with link_repo.open_file("loose.txt", "w+b") as f:
+        f.write(os.urandom(64))
+    link_repo.stage(scan=True)
+    link_repo.commit()
+    link_repo.push()
+
+    repo: Lore = new_lore_repo()
+    with repo.open_file("root.txt", "w+b") as f:
+        f.write(os.urandom(64))
+    repo.stage(scan=True)
+    repo.commit()
+    repo.push()
+
+    repo.link_add("lk", link_repo.get_id(), "mounted")
+    repo.commit()
+    repo.push()
+
+    count = parse_status_count_json(repo.status(count=True, json=True))
+    assert count is not None, "Expected a count event"
+    assert count["directories"] == 3, (
+        f"Expected 3 directories (lk + lk/keep + lk/drop), got {count}"
+    )
+    assert count["files"] == 4, (
+        f"Expected 4 files (root.txt + lk/top.txt + lk/keep/k.txt + lk/drop/d.txt), got {count}"
+    )
+
+    view_dir = tmp_path_factory.mktemp("link-view")
+    view_path = os.path.join(view_dir, "view.txt")
+    with open(view_path, "w+") as view_file:
+        view_file.write("**\n")
+        view_file.write("!root.txt\n")
+        view_file.write("!lk/**\n")
+        view_file.write("lk/drop/\n")
+    clone: Lore = repo.clone(view=view_path)
+
+    clone_count = parse_status_count_json(clone.status(count=True, json=True))
+    assert clone_count is not None, "Expected a count event in the view-filtered clone"
+    assert clone_count["directories"] == 2, (
+        f"View filter should drop lk/drop inside the link: expected 2 dirs, got {clone_count}"
+    )
+    assert clone_count["files"] == 3, (
+        f"View filter should drop lk/drop/d.txt inside the link: expected 3 files, got {clone_count}"
     )

@@ -254,6 +254,7 @@ impl LoreInterface {
                 reset: 0,
                 sync_point: operation.sync_point as u8,
                 revision_only: 0,
+                count: 0,
                 paths: Default::default(),
             },
             Some(Box::new(move |event| error_and_log!(span, event))),

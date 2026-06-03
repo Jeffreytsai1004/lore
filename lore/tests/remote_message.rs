@@ -47,6 +47,7 @@ async fn message_to_server_to_and_from_bytes() {
             reset: 0,
             sync_point: 0,
             revision_only: 0,
+            count: 0,
             paths: paths.clone(),
         }),
     };

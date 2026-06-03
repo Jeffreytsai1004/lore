@@ -1684,6 +1684,7 @@ class Lore:
         scan: bool = False,
         reset: bool = False,
         revision_only: bool = False,
+        count: bool = False,
         targets: str | None = None,
         **kwargs: Unpack[GlobalOptions],
     ):
@@ -1695,6 +1696,7 @@ class Lore:
             + (["--scan"] if scan else [])
             + (["--reset"] if reset else [])
             + (["--revision-only"] if revision_only else [])
+            + (["--count"] if count else [])
             + (["--targets", targets] if targets else []),
             **kwargs,
         )

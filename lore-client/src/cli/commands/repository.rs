@@ -80,6 +80,10 @@ pub struct RepositoryStatusArgs {
     #[clap(long, action)]
     revision_only: bool,
 
+    /// Count directories and files (staged state if present, else current revision; view-filtered)
+    #[clap(long, action)]
+    count: bool,
+
     /// Optional paths in repository
     path: Option<Vec<String>>,
 
@@ -471,6 +475,7 @@ pub fn handle_repository_status(globals: LoreGlobalArgs, args: &RepositoryStatus
         reset,
         sync_point,
         revision_only: revision_only as u8,
+        count: args.count as u8,
         paths,
     };
 
@@ -524,6 +529,12 @@ pub fn handle_repository_status(globals: LoreGlobalArgs, args: &RepositoryStatus
                 {
                     println!("Pending merge, incoming revision {}", data.revision_merged);
                 }
+            }
+            LoreEvent::RepositoryStatusCount(data) => {
+                println!(
+                    "Repository size: {} directories, {} files",
+                    data.directories, data.files
+                );
             }
             LoreEvent::RepositoryStatusFile(data) => {
                 if data.flag_staged != 0 {

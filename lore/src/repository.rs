@@ -837,6 +837,9 @@ pub struct LoreRepositoryStatusArgs {
     pub sync_point: u8,
     /// Only emit revision info, skip all diffs
     pub revision_only: u8,
+    /// Count directories and files (view-filtered) in the staged state if
+    /// present, otherwise the current revision
+    pub count: u8,
     /// Optional path to limit status check to
     pub paths: LoreArray<LoreString>,
 }
@@ -875,6 +878,7 @@ pub struct LoreRepositoryStatusArgs {
 /// |-------|-------------|
 /// | [`LoreEvent::RepositoryStatusRevision`](crate::interface::LoreEvent::RepositoryStatusRevision) | Emitted with current and staged revision info |
 /// | [`LoreEvent::RepositoryStatusFile`](crate::interface::LoreEvent::RepositoryStatusFile) | Emitted for each file with pending changes, conflict status, or untracked status |
+/// | [`LoreEvent::RepositoryStatusCount`](crate::interface::LoreEvent::RepositoryStatusCount) | Emitted when `count` is set, with the directory and file count (view-filtered) of the staged state if present, otherwise the current revision |
 /// | [`LoreEvent::PathIgnore`](crate::interface::LoreEvent::PathIgnore) | Emitted for each path excluded by ignore rules |
 pub async fn status(
     globals: LoreGlobalArgs,
@@ -911,6 +915,7 @@ async fn status_local(
                     reset: args.reset != 0,
                     sync_point: args.sync_point != 0,
                     revision_only: args.revision_only != 0,
+                    count: args.count != 0,
                 };
                 status_impl(repository, args.paths, options)
             },
@@ -924,6 +929,7 @@ async fn status_local(
                 reset: false,
                 sync_point: args.sync_point != 0,
                 revision_only: args.revision_only != 0,
+                count: args.count != 0,
             };
             status_impl(repository, args.paths, options)
         })
