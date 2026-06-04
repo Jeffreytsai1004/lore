@@ -1,7 +1,6 @@
 # Git
 .git/
 .gitconfig
-.gitignore
 .gitattributes
 .github/
 
