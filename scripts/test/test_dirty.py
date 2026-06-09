@@ -12,7 +12,7 @@ import logging
 import os
 
 import pytest
-from lore_parsers import parse_status_json
+from lore_parsers import parse_status_json, parse_status_summary_json
 from test_utils import to_posix
 
 from lore import Lore
@@ -2114,4 +2114,161 @@ def test_revert_abort_keeps_dirty_carry(new_lore_repo):
     carry = find_status_entry(entries, "base.txt")
     assert carry is not None and carry["flagDirty"] is True and carry["flagStaged"] is False, (
         "revert abort preserves the pre-existing dirty-only carry"
+    )
+
+
+def write_view_filter(repo: Lore, lines: list[str]) -> None:
+    """Write the repository view filter (.lore/view) with the given lines."""
+    view_path = os.path.join(repo.dot_path(), "view")
+    with open(view_path, "w+") as view_file:
+        view_file.write("\n".join(lines) + "\n")
+
+
+def remove_view_filter(repo: Lore) -> None:
+    """Remove the repository view filter so all paths are back in view."""
+    view_path = os.path.join(repo.dot_path(), "view")
+    if os.path.exists(view_path):
+        os.remove(view_path)
+
+
+@pytest.mark.smoke
+def test_dirty_delete_respects_view_filter(new_lore_repo):
+    """A dirty-delete of a directory must not mark view-filtered descendants.
+
+    Regression guard for the carry-forward dirty recursion: a view pattern like
+    `/Templates/*` excludes the *contents* of `Templates` but not the directory
+    node itself, so `dirty Templates` would previously recurse the whole subtree
+    and mark every (filtered) child as a dirty-delete in the staged anchor.
+
+    The marking is hidden by the view (and a fresh scan would re-derive the
+    on-disk deletion regardless), so it is observed with `--check-dirty` after
+    removing the view: that only re-examines nodes already marked dirty in the
+    staged anchor, so the dirty-delete count reflects exactly what the recursion
+    wrote. With the fix only the `Templates` directory node is marked, so the
+    summary reports a single delete; without it, every filtered descendant
+    (`a.txt`, `sub`, `sub/b.txt`) would inflate the count.
+    """
+    repo: Lore = new_lore_repo()
+
+    # Tracked subtree (with nesting) plus a normal file, committed.
+    repo.make_dirs(os.path.join("Templates", "sub"))
+    with repo.open_file(os.path.join("Templates", "a.txt"), "w+") as f:
+        f.write("a\n")
+    with repo.open_file(os.path.join("Templates", "sub", "b.txt"), "w+") as f:
+        f.write("b\n")
+    with repo.open_file("keep.txt", "w+") as f:
+        f.write("keep\n")
+    repo.stage(scan=True, offline=True)
+    repo.commit(offline=True)
+
+    # View excludes the contents of Templates but not the Templates node itself.
+    write_view_filter(repo, ["/Templates/*"])
+
+    # Remove the now-filtered subtree from disk and mark the directory dirty,
+    # reproducing the phantom dirty-delete of a view-only directory. With it
+    # gone from disk, `dirty` takes the not-on-disk + in-revision delete path.
+    repo.rmtree("Templates")
+    repo.dirty("Templates", offline=True)
+
+    # Drop the view and re-examine the dirty markers without touching the
+    # filesystem (--check-dirty does not walk disk; it only verifies nodes
+    # already marked dirty in the staged anchor).
+    remove_view_filter(repo)
+    output = repo.status(check_dirty=True, json=True, offline=True)
+
+    summary = parse_status_summary_json(output)
+    assert summary is not None, "check-dirty must emit a repositoryStatusSummary event"
+    assert summary["deletes"] == 1, (
+        "only the Templates directory node should be marked dirty-delete; "
+        f"filtered descendants must not be carried forward, got: {summary}"
+    )
+
+    # And none of the filtered descendants should appear as dirty entries.
+    entries = parse_status_json(output)
+    templates_children = [
+        e
+        for e in entries
+        if to_posix(e.get("path", "")).startswith("Templates/")
+        and e.get("flagDirty") is True
+    ]
+    assert not templates_children, (
+        "view-filtered Templates children must not be marked dirty, "
+        f"got: {[e['path'] for e in templates_children]}"
+    )
+
+
+@pytest.mark.smoke
+def test_status_scan_summary_event(new_lore_repo):
+    """`status --scan --json` emits a repositoryStatusSummary event whose
+    per-action counts match the modify/add/delete made on disk."""
+    repo: Lore = new_lore_repo()
+
+    repo.make_dirs("src")
+    with repo.open_file(os.path.join("src", "modify.txt"), "w+") as f:
+        f.write("orig\n")
+    with repo.open_file(os.path.join("src", "delete.txt"), "w+") as f:
+        f.write("bye\n")
+    repo.stage(scan=True, offline=True)
+    repo.commit(offline=True)
+
+    with repo.open_file(os.path.join("src", "modify.txt"), "w+") as f:
+        f.write("changed\n")
+    os.remove(os.path.join(repo.path, "src", "delete.txt"))
+    with repo.open_file(os.path.join("src", "add.txt"), "w+") as f:
+        f.write("new\n")
+
+    output = repo.status(scan=True, json=True, offline=True)
+    summary = parse_status_summary_json(output)
+    assert summary is not None, "scan must emit a repositoryStatusSummary event"
+    assert summary["adds"] == 1, summary
+    assert summary["modifies"] == 1, summary
+    assert summary["deletes"] == 1, summary
+    assert summary["moves"] == 0, summary
+    assert summary["copies"] == 0, summary
+
+
+@pytest.mark.smoke
+def test_status_check_dirty_summary_excludes_reverted(new_lore_repo):
+    """`status --check-dirty --json` summary counts only nodes that stay dirty
+    after verification: a file marked dirty but restored to its committed
+    content is cleared and excluded from the summary."""
+    repo: Lore = new_lore_repo()
+
+    with repo.open_file("real.txt", "w+") as f:
+        f.write("v1\n")
+    with repo.open_file("reverted.txt", "w+") as f:
+        f.write("same\n")
+    repo.stage(scan=True, offline=True)
+    repo.commit(offline=True)
+
+    # real.txt genuinely changes; reverted.txt is marked dirty but its on-disk
+    # content still equals the committed content, so verify clears it.
+    with repo.open_file("real.txt", "w+") as f:
+        f.write("v2\n")
+    repo.dirty(["real.txt", "reverted.txt"], offline=True)
+
+    output = repo.status(check_dirty=True, json=True, offline=True)
+    summary = parse_status_summary_json(output)
+    assert summary is not None, "check-dirty must emit a repositoryStatusSummary event"
+    assert summary["modifies"] == 1, summary
+    assert summary["adds"] == 0, summary
+    assert summary["deletes"] == 0, summary
+    assert summary["moves"] == 0, summary
+    assert summary["copies"] == 0, summary
+
+
+@pytest.mark.smoke
+def test_status_plain_has_no_summary_event(new_lore_repo):
+    """A plain `status --json` (no scan, no check-dirty) does not emit the
+    summary event — it is only produced by reconciling status runs."""
+    repo: Lore = new_lore_repo()
+
+    with repo.open_file("file.txt", "w+") as f:
+        f.write("data\n")
+    repo.stage(scan=True, offline=True)
+    repo.commit(offline=True)
+
+    output = repo.status(json=True, offline=True)
+    assert parse_status_summary_json(output) is None, (
+        "plain status must not emit a repositoryStatusSummary event"
     )

@@ -161,6 +161,7 @@ use crate::repository::list::LoreRepositoryListEntryEventData;
 use crate::repository::status::LoreRepositoryStatusCountEventData;
 use crate::repository::status::LoreRepositoryStatusFileEventData;
 use crate::repository::status::LoreRepositoryStatusRevisionEventData;
+use crate::repository::status::LoreRepositoryStatusSummaryEventData;
 use crate::repository::store::LoreRepositoryStoreImmutableQueryEventData;
 use crate::repository::verify::LoreRepositoryVerifyFragmentEventData;
 use crate::repository::verify::LoreRepositoryVerifyFragmentMatchEventData;
@@ -577,6 +578,7 @@ pub enum LoreEvent {
     RepositoryStatusRevision(LoreRepositoryStatusRevisionEventData),
     RepositoryStatusFile(LoreRepositoryStatusFileEventData),
     RepositoryStatusCount(LoreRepositoryStatusCountEventData),
+    RepositoryStatusSummary(LoreRepositoryStatusSummaryEventData),
     RepositoryStoreImmutableQuery(LoreRepositoryStoreImmutableQueryEventData),
     RevisionCommitBegin(LoreRevisionCommitBeginEventData),
     RevisionCommitProgress(LoreRevisionCommitProgressEventData),

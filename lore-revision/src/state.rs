@@ -2275,9 +2275,14 @@ impl State {
         repository: Arc<RepositoryContext>,
         root_node: NodeID,
         base_path: RelativePathBuf,
-    ) -> Result<Vec<RelativePathBuf>, StateError> {
+    ) -> Result<Vec<RelativePath>, StateError> {
         let mut result = Vec::new();
-        let mut stack: Vec<(NodeID, RelativePathBuf)> = vec![(root_node, base_path)];
+        let force = execution_context().globals().force();
+        // Work in immutable `RelativePath` throughout: `push_into_buf` borrows
+        // the parent (no per-sibling clone) and a single `freeze` per retained
+        // child is reused as the stored stack/result value, so the filter check
+        // borrows it without an extra allocation.
+        let mut stack: Vec<(NodeID, RelativePath)> = vec![(root_node, base_path.freeze())];
 
         while let Some((node_id, path)) = stack.pop() {
             let children = self
@@ -2292,7 +2297,20 @@ impl State {
                 }
 
                 let name = self.node_name_clone(repository.clone(), child_id).await?;
-                let child_path = path.clone().join(&name);
+                let child_path = path.push_into_buf(&name).freeze();
+
+                // Don't carry forward dirty paths the view/ignore filter
+                // excludes; they can't be replayed against a checkout that
+                // never materializes them. --force bypasses the filter.
+                if !force
+                    && repository.filter.excludes(
+                        &child_path,
+                        child.is_directory(),
+                        FilterMode::Full,
+                    )
+                {
+                    continue;
+                }
 
                 if child.is_file() {
                     result.push(child_path);
@@ -3224,6 +3242,19 @@ fn collect_dirty_paths_inner(
 
             let child_name = state.node_name_clone(repository.clone(), child_id).await?;
             let child_path = parent_path.push_into_buf(&child_name).freeze();
+
+            // Don't carry forward dirty paths that the view/ignore filter
+            // excludes — they cannot be re-applied against a checkout that
+            // never materializes them. --force bypasses the filter.
+            let force = execution_context().globals().force();
+            if !force
+                && repository
+                    .filter
+                    .excludes(&child_path, child.is_directory(), FilterMode::Full)
+            {
+                child_node_opt = child.sibling();
+                continue;
+            }
 
             let action_bits = NodeFlags::from_bits_truncate(child.flags) & NodeFlags::ActionBits;
             if child.is_dirty() && !action_bits.is_empty() && !(skip_staged && child.is_staged()) {

@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Epic Games, Inc.
 // SPDX-License-Identifier: MIT
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering;
 
 use chrono::DateTime;
 use clap::Args;
@@ -466,6 +469,20 @@ fn path_typed(path: &str, node_type: LoreNodeType) -> String {
     path
 }
 
+/// Atomic holder for the dirty-node summary captured from the status callback,
+/// printed after the file sections. `seen` distinguishes "summary emitted with
+/// all-zero counts" (scan/check-dirty found nothing) from "no summary event"
+/// (plain status).
+#[derive(Default)]
+struct StatusSummaryCounts {
+    seen: AtomicBool,
+    adds: AtomicU64,
+    deletes: AtomicU64,
+    modifies: AtomicU64,
+    moves: AtomicU64,
+    copies: AtomicU64,
+}
+
 pub fn handle_repository_status(globals: LoreGlobalArgs, args: &RepositoryStatusArgs) -> u8 {
     let revision_only = args.revision_only;
     let staged = if revision_only { 0u8 } else { true as u8 };
@@ -500,9 +517,13 @@ pub fn handle_repository_status(globals: LoreGlobalArgs, args: &RepositoryStatus
     let staged: Arc<Mutex<Vec<_>>> = Arc::new(Mutex::new(Vec::new()));
     let unmerged: Arc<Mutex<Vec<_>>> = Arc::new(Mutex::new(Vec::new()));
     let unstaged: Arc<Mutex<Vec<_>>> = Arc::new(Mutex::new(Vec::new()));
+    // Stash the dirty-node summary (scan/check-dirty only) so it prints after
+    // the file sections rather than mid-stream from the callback.
+    let summary: Arc<StatusSummaryCounts> = Arc::new(StatusSummaryCounts::default());
     let staged_path = staged.clone();
     let unmerged_path = unmerged.clone();
     let unstaged_path = unstaged.clone();
+    let summary_holder = summary.clone();
     let callback = output_formatter().unwrap_or(Some(
         (Box::new(move |event: &LoreEvent| match event {
             LoreEvent::RepositoryStatusRevision(data) => {
@@ -557,6 +578,14 @@ pub fn handle_repository_status(globals: LoreGlobalArgs, args: &RepositoryStatus
                     "Repository size: {} directories, {} files",
                     data.directories, data.files
                 );
+            }
+            LoreEvent::RepositoryStatusSummary(data) => {
+                summary_holder.adds.store(data.adds, Ordering::Relaxed);
+                summary_holder.deletes.store(data.deletes, Ordering::Relaxed);
+                summary_holder.modifies.store(data.modifies, Ordering::Relaxed);
+                summary_holder.moves.store(data.moves, Ordering::Relaxed);
+                summary_holder.copies.store(data.copies, Ordering::Relaxed);
+                summary_holder.seen.store(true, Ordering::Relaxed);
             }
             LoreEvent::RepositoryStatusFile(data) => {
                 if data.flag_staged != 0 {
@@ -698,6 +727,38 @@ pub fn handle_repository_status(globals: LoreGlobalArgs, args: &RepositoryStatus
                 file.action_as_string_short(),
                 anstyle::Reset,
                 path_typed(file.path.as_str(), file.r#type)
+            );
+        }
+    }
+
+    if summary.seen.load(Ordering::Relaxed) {
+        let adds = summary.adds.load(Ordering::Relaxed);
+        let deletes = summary.deletes.load(Ordering::Relaxed);
+        let modifies = summary.modifies.load(Ordering::Relaxed);
+        let moves = summary.moves.load(Ordering::Relaxed);
+        let copies = summary.copies.load(Ordering::Relaxed);
+        let total = adds + deletes + modifies + moves + copies;
+        if total == 0 {
+            println!("No tracked changes");
+        } else {
+            let parts = [
+                (adds, "added"),
+                (modifies, "modified"),
+                (deletes, "deleted"),
+                (moves, "moved"),
+                (copies, "copied"),
+            ];
+            let detail = parts
+                .iter()
+                .filter(|(count, _)| *count > 0)
+                .map(|(count, label)| format!("{count} {label}"))
+                .collect::<Vec<_>>()
+                .join(", ");
+            println!(
+                "{}Tracked changes:{} {}",
+                CommonStyles::HEADERS,
+                anstyle::Reset,
+                detail
             );
         }
     }

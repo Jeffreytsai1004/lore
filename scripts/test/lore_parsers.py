@@ -197,6 +197,14 @@ def parse_status_count_json(status_output: str) -> dict | None:
     return entries[-1] if entries else None
 
 
+def parse_status_summary_json(status_output: str) -> dict | None:
+    """Parse `lore status --scan/--check-dirty --json` output and return the
+    single repositoryStatusSummary event data (with `adds`, `deletes`,
+    `modifies`, `moves`, `copies` keys), or None if no summary was emitted."""
+    entries = parse_jsonl(status_output, "repositoryStatusSummary")
+    return entries[-1] if entries else None
+
+
 def parse_layer_list_json(output: str) -> list[dict]:
     """Parse `lore layer list --json` output into a list of layer entry dicts."""
     return parse_jsonl(output, "layerEntry")

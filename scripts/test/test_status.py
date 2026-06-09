@@ -57,6 +57,8 @@ def test_status(new_lore_repo):
     num_unstaged = 0
     for line in output.splitlines():
         if counting:
+            if line.startswith("Tracked changes:"):
+                break
             num_unstaged += 1
             assert line.startswith("A ") and line.endswith(status_path), (
                 f"Filtered status found unexpected modified file path: {line}"
@@ -82,6 +84,8 @@ def test_status(new_lore_repo):
     num_unstaged = 0
     for line in output.splitlines():
         if counting:
+            if line.startswith("Tracked changes:"):
+                break
             num_unstaged += 1
             assert line.startswith("A ") and line.endswith(status_subpath), (
                 f"Filtered status found unexpected modified file path: {line}"
@@ -107,6 +111,8 @@ def test_status(new_lore_repo):
     num_unstaged = 0
     for line in output.splitlines():
         if counting:
+            if line.startswith("Tracked changes:"):
+                break
             num_unstaged += 1
             assert line.startswith("A ") and line.endswith(status_subpath), (
                 f"Filtered status found unexpected modified file path: {line}"
@@ -141,6 +147,8 @@ def test_status(new_lore_repo):
     num_unstaged = 0
     for line in output.splitlines():
         if counting:
+            if line.startswith("Tracked changes:"):
+                break
             num_unstaged += 1
             assert line.startswith("M ") and line.endswith(status_path), (
                 f"Filtered status found unexpected modified file path: {line}"
@@ -166,6 +174,8 @@ def test_status(new_lore_repo):
     num_unstaged = 0
     for line in output.splitlines():
         if counting:
+            if line.startswith("Tracked changes:"):
+                break
             num_unstaged += 1
             assert line.startswith("M ") and line.endswith(status_subpath), (
                 f"Filtered status found unexpected modified file path: {line}"
@@ -191,6 +201,8 @@ def test_status(new_lore_repo):
     num_unstaged = 0
     for line in output.splitlines():
         if counting:
+            if line.startswith("Tracked changes:"):
+                break
             num_unstaged += 1
             assert line.startswith("M ") and line.endswith(status_subpath), (
                 f"Filtered status found unexpected modified file path: {line}"
@@ -218,6 +230,8 @@ def test_status(new_lore_repo):
     num_unstaged = 0
     for line in output.splitlines():
         if counting:
+            if line.startswith("Tracked changes:"):
+                break
             num_unstaged += 1
             assert line.startswith("D ") and line.endswith(status_subpath), (
                 f"Filtered status found unexpected modified file path: {line}"
@@ -243,6 +257,8 @@ def test_status(new_lore_repo):
     num_unstaged = 0
     for line in output.splitlines():
         if counting:
+            if line.startswith("Tracked changes:"):
+                break
             num_unstaged += 1
             assert line.startswith("D ") and line.endswith(status_subpath), (
                 f"Filtered status found unexpected modified file path: {line}"

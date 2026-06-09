@@ -306,7 +306,7 @@ pub async fn reset(
                 RelativePath::new_from_user_path(repository_root.as_path(), path.as_str())
             else {
                 emit_path_ignore(path.as_str()).await;
-                lore_debug!("Ignoring invalid path: {path}");
+                lore_trace!("Ignoring invalid path: {path}");
                 continue;
             };
 
@@ -346,10 +346,18 @@ pub async fn reset(
     })
     .await;
 
-    event::LoreEvent::FileResetEnd(LoreFileResetEndEventData {
-        count: count_data(&outer_stats),
-    })
-    .send();
+    let counts = count_data(&outer_stats);
+    lore_debug!(
+        "Reset complete: {} reset ({} directories, {} files), {} deleted ({} directories, {} files)",
+        counts.directory_reset_count + counts.file_reset_count,
+        counts.directory_reset_count,
+        counts.file_reset_count,
+        counts.directory_delete_count + counts.file_delete_count,
+        counts.directory_delete_count,
+        counts.file_delete_count,
+    );
+
+    event::LoreEvent::FileResetEnd(LoreFileResetEndEventData { count: counts }).send();
 
     // If the staged state was modified (dirty flags cleared), persist it.
     // If no staged or dirty nodes remain, delete the anchor.
@@ -494,7 +502,7 @@ pub async fn reset_to_last_merged(
                 RelativePath::new_from_user_path(repository_root.as_path(), path.as_str())
             else {
                 emit_path_ignore(path.as_str()).await;
-                lore_debug!("Ignoring invalid path: {path}");
+                lore_trace!("Ignoring invalid path: {path}");
                 continue;
             };
 
@@ -953,7 +961,7 @@ async fn reset_walk_path(ctx: ResetContext, relative_path: RelativePath) -> Resu
                 }
 
                 if staged_node.is_dirty_add() {
-                    lore_debug!(
+                    lore_trace!(
                         "Reset dirty add {}, discarding staged node and keeping the file",
                         relative_path.as_str()
                     );
@@ -1021,7 +1029,7 @@ async fn reset_walk_path(ctx: ResetContext, relative_path: RelativePath) -> Resu
             }
 
             if delete_path {
-                lore_debug!("Reset removing path {}", relative_path.as_str());
+                lore_trace!("Reset removing path {}", relative_path.as_str());
                 stats.file_delete_count.fetch_add(1, Ordering::Relaxed);
                 event::LoreEvent::FileResetFile(LoreFileResetFileEventData {
                     path: LoreString::from(&relative_path),
@@ -1240,7 +1248,7 @@ async fn reset_walk_directory(
         stats,
         file_tx,
     } = ctx;
-    lore_debug!("Resetting directory: {}", directory_path.as_str());
+    lore_trace!("Resetting directory: {}", directory_path.as_str());
 
     let mut child_node_iter = node.child();
 
@@ -1253,15 +1261,15 @@ async fn reset_walk_directory(
             let absolute_path = directory_path.to_absolute_path(repository.require_path()?);
             match tokio::fs::create_dir(absolute_path.as_path()).await {
                 Ok(_) => {
-                    lore_debug!("Created empty directory: {}", directory_path.as_str());
+                    lore_trace!("Created empty directory: {}", directory_path.as_str());
                 }
                 Err(err) => {
                     if err.kind() == std::io::ErrorKind::AlreadyExists {
-                        lore_debug!("Directory already exists: {}", directory_path.as_str());
+                        lore_trace!("Directory already exists: {}", directory_path.as_str());
                     } else if let Ok(metadata) = tokio::fs::metadata(absolute_path.as_path()).await
                     {
                         if metadata.is_dir() {
-                            lore_debug!("Directory already exists: {}", directory_path.as_str());
+                            lore_trace!("Directory already exists: {}", directory_path.as_str());
                         } else {
                             return Err(err).internal("Failed to create directory")?;
                         }
@@ -1413,7 +1421,7 @@ async fn reset_walk_directory(
         }
 
         if !node_children_names.contains(&filesystem_child.name) {
-            lore_debug!(
+            lore_trace!(
                 "Child node {} not found, removing path from disk",
                 filesystem_child.name.as_str()
             );
@@ -1550,7 +1558,7 @@ async fn reset_file_realize(
                 .node_name_ref(node_index)
                 .forward::<ResetError>("Failed to get node name")?;
             if *name != *node_name {
-                lore_debug!(
+                lore_trace!(
                     "Node case variation in file system detected renaming, {} -> {}",
                     name,
                     node_name
@@ -1576,13 +1584,13 @@ async fn reset_file_realize(
                 .flatten()
                 .internal("Failed renaming file")?;
             } else {
-                lore_debug!("File {relative_path} is not modified, no reset");
+                lore_trace!("File {relative_path} is not modified, no reset");
             }
             return Ok(());
         }
     }
 
-    lore_debug!(
+    lore_trace!(
         "Recovering node {name} with path {}",
         relative_path.as_str()
     );

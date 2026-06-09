@@ -12,6 +12,7 @@ use crate::interface::LoreString;
 use crate::lore::Hash;
 use crate::lore::execution_context;
 use crate::lore_debug;
+use crate::lore_trace;
 use crate::node::Node;
 use crate::node::NodeBlock;
 use crate::node::NodeFlags;
@@ -101,7 +102,7 @@ pub async fn dirty(
             relative_paths.push(rp);
         } else {
             emit_path_ignore(path.as_str()).await;
-            lore_debug!("Ignoring invalid path: {path}");
+            lore_trace!("Ignoring invalid path: {path}");
         }
     }
 
@@ -133,7 +134,7 @@ pub(crate) async fn dirty_relative_paths(
                 .filter
                 .emit_excludes(relative_path, true, FilterMode::Full)
         {
-            lore_debug!("Path excluded by filter: {}", relative_path.as_str());
+            lore_trace!("Path excluded by filter: {}", relative_path.as_str());
             continue;
         }
 
@@ -147,9 +148,12 @@ pub(crate) async fn dirty_relative_paths(
         .await?;
     }
 
-    let total = stats.modify_count.load(Ordering::Relaxed)
-        + stats.add_count.load(Ordering::Relaxed)
-        + stats.delete_count.load(Ordering::Relaxed);
+    let modify = stats.modify_count.load(Ordering::Relaxed);
+    let add = stats.add_count.load(Ordering::Relaxed);
+    let delete = stats.delete_count.load(Ordering::Relaxed);
+    let total = modify + add + delete;
+
+    lore_debug!("Dirtied {total} paths: {modify} modified, {add} added, {delete} deleted");
 
     if total == 0 {
         return Ok(state.revision());
@@ -220,7 +224,7 @@ async fn dirty_path(
             .await?;
         }
         // Directory on disk -> recurse children
-        lore_debug!("Dirty directory recurse: {}", relative_path.as_str());
+        lore_trace!("Dirty directory recurse: {}", relative_path.as_str());
         dirty_directory(
             repository.clone(),
             state_current.clone(),
@@ -232,7 +236,7 @@ async fn dirty_path(
         .await?;
     } else if exists_on_disk && in_current_revision {
         // File on disk + in revision -> Modify
-        lore_debug!("Dirty modify: {}", relative_path.as_str());
+        lore_trace!("Dirty modify: {}", relative_path.as_str());
         let link = staged_link
             .or(state_current
                 .find_node_link(repository.clone(), relative_path.as_str())
@@ -248,7 +252,7 @@ async fn dirty_path(
         stats.modify_count.fetch_add(1, Ordering::Relaxed);
     } else if exists_on_disk {
         // File on disk + not in revision -> Add
-        lore_debug!("Dirty add: {}", relative_path.as_str());
+        lore_trace!("Dirty add: {}", relative_path.as_str());
         dirty_add(
             repository.clone(),
             state_staged.clone(),
@@ -258,7 +262,7 @@ async fn dirty_path(
         .await?;
     } else if in_current_revision {
         // Not on disk + in revision -> Delete
-        lore_debug!("Dirty delete: {}", relative_path.as_str());
+        lore_trace!("Dirty delete: {}", relative_path.as_str());
         let link = staged_link
             .or(state_current
                 .find_node_link(repository.clone(), relative_path.as_str())
@@ -270,6 +274,7 @@ async fn dirty_path(
             repository.clone(),
             state_staged.clone(),
             link.node,
+            relative_path,
             stats.clone(),
         )
         .await?;
@@ -280,7 +285,7 @@ async fn dirty_path(
             .await
             .forward::<DirtyError>("Failed to get staged node")?;
         if node.is_dirty_add() {
-            lore_debug!(
+            lore_trace!(
                 "Dirty reverted add, discarding node: {}",
                 relative_path.as_str()
             );
@@ -334,14 +339,14 @@ async fn dirty_path(
 
             stats.delete_count.fetch_add(1, Ordering::Relaxed);
         } else {
-            lore_debug!(
+            lore_trace!(
                 "Dirty ignore (not on disk, not in revision): {}",
                 relative_path.as_str()
             );
         }
     } else {
         // Not on disk + not in revision + not in staged -> Ignore
-        lore_debug!(
+        lore_trace!(
             "Dirty ignore (not on disk, not in revision): {}",
             relative_path.as_str()
         );
@@ -351,10 +356,19 @@ async fn dirty_path(
 }
 
 /// Mark a node as Dirty+Delete, recursing into directory children.
+///
+/// View/ignore-filtered descendants are pruned (not marked): a dirty-delete
+/// directory whose contents are excluded — e.g. a view-only path like
+/// `Templates` where `/Templates/*` filters the contents but not the directory
+/// node itself — must not re-mark its entire filtered subtree as deleted. The
+/// directory node passed in is always marked; only its excluded children are
+/// skipped. The non-emitting `excludes` is used so a large pruned subtree does
+/// not produce a `FilterExclude` event per node.
 async fn dirty_delete(
     repository: Arc<RepositoryContext>,
     state: Arc<State>,
     node_id: NodeID,
+    path: &RelativePath,
     stats: Arc<DirtyStats>,
 ) -> Result<(), DirtyError> {
     let block_index = NodeBlock::index(node_id);
@@ -369,7 +383,7 @@ async fn dirty_delete(
         return Ok(());
     }
 
-    lore_debug!("Dirty delete of node {}", node_id);
+    lore_trace!("Dirty delete of node {} ({})", node_id, path.as_str());
     stats.delete_count.fetch_add(1, Ordering::Relaxed);
 
     state
@@ -379,21 +393,43 @@ async fn dirty_delete(
 
     // Recurse into directory children
     if node.is_directory() {
+        let force = execution_context().globals().force();
         let mut child_node_iter = node.child();
         let mut cycle = SiblingCycleGuard::new(node_id);
         while let Some(child_node_id) = child_node_iter {
-            dirty_delete_recurse(
-                repository.clone(),
-                state.clone(),
-                child_node_id,
-                stats.clone(),
-            )
-            .await?;
-
             let child_node = state
                 .node(repository.clone(), child_node_id)
                 .await
                 .forward::<DirtyError>("Failed deserializing state node block")?;
+
+            let child_name = state
+                .node_name_clone(repository.clone(), child_node_id)
+                .await
+                .forward::<DirtyError>("Failed to get child name")?;
+            let child_path = path.push_into_buf(&child_name).freeze();
+
+            if force
+                || !repository.filter.excludes(
+                    &child_path,
+                    child_node.is_directory(),
+                    FilterMode::Full,
+                )
+            {
+                dirty_delete_recurse(
+                    repository.clone(),
+                    state.clone(),
+                    child_node_id,
+                    child_path,
+                    stats.clone(),
+                )
+                .await?;
+            } else {
+                lore_trace!(
+                    "Dirty delete skipping filtered child: {}",
+                    child_path.as_str()
+                );
+            }
+
             child_node
                 .walk_step(child_node_id, node_id, &mut cycle)
                 .forward::<DirtyError>("Invalid node hierarchy in dirty delete walk")?;
@@ -408,9 +444,10 @@ fn dirty_delete_recurse(
     repository: Arc<RepositoryContext>,
     state: Arc<State>,
     node_id: NodeID,
+    path: RelativePath,
     stats: Arc<DirtyStats>,
 ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), DirtyError>> + Send>> {
-    Box::pin(dirty_delete(repository, state, node_id, stats))
+    Box::pin(async move { dirty_delete(repository, state, node_id, &path, stats).await })
 }
 
 /// Add a new file node to the staged tree with Dirty+Add.

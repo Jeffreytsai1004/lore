@@ -228,6 +228,59 @@ pub struct LoreRepositoryStatusCountEventData {
     pub files: u64,
 }
 
+/// Aggregate counts of dirty nodes by action type, emitted once at the end of
+/// a reconciling status (`--scan` or `--check-dirty`). For `--scan` these are
+/// the changes detected against the filesystem; for `--check-dirty` they are
+/// the nodes that remained dirty after the filesystem verification.
+#[repr(C)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct LoreRepositoryStatusSummaryEventData {
+    pub adds: u64,
+    pub deletes: u64,
+    pub modifies: u64,
+    pub moves: u64,
+    pub copies: u64,
+}
+
+/// Thread-safe accumulator for dirty-node counts during the parallel status
+/// scan/verify walk. Each spawned task increments the relevant counter via
+/// [`StatusSummaryStats::classify`].
+#[derive(Default)]
+pub struct StatusSummaryStats {
+    adds: AtomicU64,
+    deletes: AtomicU64,
+    modifies: AtomicU64,
+    moves: AtomicU64,
+    copies: AtomicU64,
+}
+
+impl StatusSummaryStats {
+    /// Increment the counter matching a reported change's action. `Keep` is a
+    /// content modification (a filesystem/state diff has no separate "modify"
+    /// action — modified files surface as `Keep` with the modify flag set).
+    fn classify(&self, change: &NodeChange) {
+        let counter = match change.action {
+            FileAction::Add => &self.adds,
+            FileAction::Delete => &self.deletes,
+            FileAction::Move => &self.moves,
+            FileAction::Copy => &self.copies,
+            FileAction::Keep => &self.modifies,
+        };
+        counter.fetch_add(1, Ordering::Relaxed);
+    }
+
+    fn event_data(&self) -> LoreRepositoryStatusSummaryEventData {
+        LoreRepositoryStatusSummaryEventData {
+            adds: self.adds.load(Ordering::Relaxed),
+            deletes: self.deletes.load(Ordering::Relaxed),
+            modifies: self.modifies.load(Ordering::Relaxed),
+            moves: self.moves.load(Ordering::Relaxed),
+            copies: self.copies.load(Ordering::Relaxed),
+        }
+    }
+}
+
 #[error_set]
 pub enum StatusError {
     NodeNotFound,
@@ -814,6 +867,10 @@ pub async fn status(
     let show_scan = options.scan;
     let check_dirty = options.check_dirty;
 
+    // Accumulates per-action dirty counts across the parallel staged/scan
+    // walks; emitted as a single summary event for --scan / --check-dirty.
+    let summary = Arc::new(StatusSummaryStats::default());
+
     let local_latest = branch::load_latest(repository.clone(), branch.id)
         .await
         .unwrap_or_default();
@@ -1093,6 +1150,7 @@ pub async fn status(
                 let state_current = state_current.clone();
                 let state_staged = state_staged.clone();
                 let path = path.clone();
+                let summary = summary.clone();
                 async move {
                     let changes = state::diff_collect(
                         repository.clone(),
@@ -1127,6 +1185,13 @@ pub async fn status(
                                 continue;
                             }
                             cleared_dirty = true;
+                        }
+
+                        // Count nodes that remain dirty (verify did not clear
+                        // them) toward the summary; purely-staged changes are
+                        // not part of the dirty tracking count.
+                        if change.flags.is_dirty() && !cleared_dirty {
+                            summary.classify(change);
                         }
 
                         let size = file_size_from_node_change_id(change).await?;
@@ -1218,6 +1283,7 @@ pub async fn status(
             let state_staged = state_staged.clone();
             let path = path.clone();
             let layer_mounts = layer_mounts.clone();
+            let summary = summary.clone();
             let exists = if let Some(path) = path.as_ref() {
                 let mut exists_in_state = false;
                 let mut exists_in_filesystem = false;
@@ -1299,6 +1365,7 @@ pub async fn status(
 
                             // Emit event for display (dirty set/clear handled inline by diff)
                             if !change.flags.is_stage() {
+                                summary.classify(change);
                                 event::LoreEvent::RepositoryStatusFile(
                                     LoreRepositoryStatusFileEventData::from_node_change(
                                         change, size,
@@ -1317,6 +1384,22 @@ pub async fn status(
 
             lore_drain_tasks!(tasks, StatusError::internal("Recursion task failed"))?;
         }
+    }
+
+    // Emit the aggregate dirty-node summary for reconciling status runs. For
+    // --scan these are the changes detected against the filesystem; for
+    // --check-dirty they are the nodes that stayed dirty after verification.
+    if show_scan || check_dirty {
+        let data = summary.event_data();
+        lore_debug!(
+            "Status summary: {} added, {} modified, {} deleted, {} moved, {} copied",
+            data.adds,
+            data.modifies,
+            data.deletes,
+            data.moves,
+            data.copies
+        );
+        event::LoreEvent::RepositoryStatusSummary(data).send();
     }
 
     // If the staged state was updated (by scan or other operations), serialize it.

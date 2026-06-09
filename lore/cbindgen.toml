@@ -310,6 +310,7 @@ include = [
 "LoreRepositoryStatusCountEventData" = "lore_repository_status_count_event_data_t"
 "LoreRepositoryStatusFileEventData" = "lore_repository_status_file_event_data_t"
 "LoreRepositoryStatusRevisionEventData" = "lore_repository_status_revision_event_data_t"
+"LoreRepositoryStatusSummaryEventData" = "lore_repository_status_summary_event_data_t"
 "LoreRepositoryStoreImmutableQueryArgs" = "lore_repository_store_immutable_query_args_t"
 "LoreRepositoryStoreImmutableQueryEventData" = "lore_repository_store_immutable_query_event_data_t"
 "LoreRepositoryVerifyStateArgs" = "lore_repository_verify_state_args_t"

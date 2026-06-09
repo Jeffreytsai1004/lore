@@ -1151,6 +1151,18 @@ typedef struct lore_repository_status_count_event_data_t {
   uint64_t files;
 } lore_repository_status_count_event_data_t;
 
+// Aggregate counts of dirty nodes by action type, emitted once at the end of
+// a reconciling status (`--scan` or `--check-dirty`). For `--scan` these are
+// the changes detected against the filesystem; for `--check-dirty` they are
+// the nodes that remained dirty after the filesystem verification.
+typedef struct lore_repository_status_summary_event_data_t {
+  uint64_t adds;
+  uint64_t deletes;
+  uint64_t modifies;
+  uint64_t moves;
+  uint64_t copies;
+} lore_repository_status_summary_event_data_t;
+
 typedef struct lore_repository_store_immutable_query_event_data_t {
   // Address of fragment
   struct lore_address_t address;
@@ -1811,6 +1823,7 @@ enum lore_event_id_t {
   LORE_EVENT_REPOSITORY_STATUS_REVISION,
   LORE_EVENT_REPOSITORY_STATUS_FILE,
   LORE_EVENT_REPOSITORY_STATUS_COUNT,
+  LORE_EVENT_REPOSITORY_STATUS_SUMMARY,
   LORE_EVENT_REPOSITORY_STORE_IMMUTABLE_QUERY,
   LORE_EVENT_REVISION_COMMIT_BEGIN,
   LORE_EVENT_REVISION_COMMIT_PROGRESS,
@@ -2029,6 +2042,7 @@ typedef struct lore_event_t {
     struct lore_repository_status_revision_event_data_t repository_status_revision;
     struct lore_repository_status_file_event_data_t repository_status_file;
     struct lore_repository_status_count_event_data_t repository_status_count;
+    struct lore_repository_status_summary_event_data_t repository_status_summary;
     struct lore_repository_store_immutable_query_event_data_t repository_store_immutable_query;
     struct lore_revision_commit_begin_event_data_t revision_commit_begin;
     struct lore_revision_commit_progress_event_data_t revision_commit_progress;
