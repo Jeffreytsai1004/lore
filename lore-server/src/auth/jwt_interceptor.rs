@@ -35,9 +35,9 @@ impl Interceptor for JWTInterceptor {
         &mut self,
         mut request: tonic::Request<()>,
     ) -> Result<tonic::Request<()>, tonic::Status> {
-        let token = extract_bearer_token(&request).ok_or(tonic::Status::unauthenticated(
-            "authorization header required",
-        ))?;
+        let token = extract_bearer_token(request.metadata()).ok_or(
+            tonic::Status::unauthenticated("authorization header required"),
+        )?;
 
         let authorization =
             task::block_in_place(|| runtime().block_on(self.jwt_verifier.verify_token(&token)))
@@ -72,9 +72,9 @@ impl Interceptor for JWTAuthnInterceptor {
         &mut self,
         mut request: tonic::Request<()>,
     ) -> Result<tonic::Request<()>, tonic::Status> {
-        let token = extract_bearer_token(&request).ok_or(tonic::Status::unauthenticated(
-            "authorization header required",
-        ))?;
+        let token = extract_bearer_token(request.metadata()).ok_or(
+            tonic::Status::unauthenticated("authorization header required"),
+        )?;
 
         // TODO(UCS-13506): Placeholder authn verifier until separate authz flow for repository service is in place
         let authorization =
@@ -88,9 +88,8 @@ impl Interceptor for JWTAuthnInterceptor {
     }
 }
 
-fn extract_bearer_token(request: &tonic::Request<()>) -> Option<String> {
-    request
-        .metadata()
+pub(crate) fn extract_bearer_token(metadata: &tonic::metadata::MetadataMap) -> Option<String> {
+    metadata
         .get("authorization")
         .and_then(|value| value.to_str().ok())
         .and_then(|header| {

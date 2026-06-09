@@ -18,6 +18,7 @@ use tonic::Response;
 use tonic::Status;
 use tracing::info;
 use tracing::instrument;
+use tracing::warn;
 
 use super::handlers::obliterate;
 use super::timeout_grpc;
@@ -88,6 +89,11 @@ impl LoreAdminService {
     }
 
     pub fn set_jwt_verifier(&mut self, jwt_verifier: Option<JwtVerifier>) {
+        if jwt_verifier.is_none() {
+            warn!(
+                "No JWT verifier - Admin Service RPCs including obliterate will be unauthenticated"
+            );
+        }
         self.jwt_verifier = Arc::new(jwt_verifier);
     }
 
@@ -120,6 +126,7 @@ impl AdminService for LoreAdminService {
                 self.mutable_store.clone(),
                 self.notification.clone(),
                 &self.hook_dispatcher,
+                &self.jwt_verifier,
             ),
         )
         .await
