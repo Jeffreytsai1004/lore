@@ -17,12 +17,20 @@ use crate::revision_tree::handle::LoreRevisionTree;
 #[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 pub struct LoreRevisionTreeAddArgs {
+    /// Per-call correlation id echoed back in events
     pub id: u64,
+    /// Loaded revision-tree handle to mutate
     pub handle: LoreRevisionTree,
+    /// Parent node the new child is added under
     pub parent_node_id: NodeID,
+    /// UTF-8 name of the new child within its parent
     pub name: LoreString,
+    /// `NodeKind` encoding: FILE=1, DIRECTORY=2, LINK=3
     pub kind: u32,
+    /// POSIX permission bits for the new node
     pub mode: u16,
+    /// Content size in bytes (leaf nodes)
     pub size: u64,
+    /// Content address `(hash, file_id context)` of the new node
     pub address: Address,
 }

@@ -18,6 +18,7 @@ use lore_revision::lore::try_execution_context;
 
 #[repr(C)]
 #[derive(Debug, Clone, Default, PartialEq)]
+/// Configuration controlling Lore's file and event logging.
 pub struct LoreLogConfig {
     /// Enable logging to a file (disabled by default)
     pub file: u8,

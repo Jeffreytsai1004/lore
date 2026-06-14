@@ -17,9 +17,14 @@ use crate::revision_tree::handle::LoreRevisionTree;
 #[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 pub struct LoreRevisionTreeMoveArgs {
+    /// Per-call correlation id echoed back in events
     pub id: u64,
+    /// Loaded revision-tree handle to mutate
     pub handle: LoreRevisionTree,
+    /// Node to move; its `file_id` is preserved across the move
     pub node_id: NodeID,
+    /// Parent node the moved node is reparented under
     pub destination_parent_id: NodeID,
+    /// UTF-8 name the moved node takes at the destination
     pub dst_name: LoreString,
 }

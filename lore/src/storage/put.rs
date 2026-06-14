@@ -46,27 +46,23 @@ use crate::storage::handle::LoreStore;
 use crate::storage::store::StoreInternal;
 
 /// One put item — a buffer to hash and store at `(partition, context)`.
-///
-/// `data` is a borrowed view into caller memory; the bytes must live until `Complete` fires.
-/// `remote_write` is the FFI flag for opting into remote upload; the remote path consumes it
-/// when available, the local-only path ignores it.
-///
-/// `fixed_size_chunk` controls the leaf fragment size when the buffer exceeds
-/// `FRAGMENT_SIZE_THRESHOLD`: zero means "let `write_content` choose"; a non-zero value caps the
-/// leaf size (clamped to the threshold). Buffers under the threshold ignore the field.
-///
-/// `local_cache` (0 or 1) tags the resulting fragment with `PayloadLocalCachePriority` — a
-/// producer-side hint that any future remote read of this address should always cache the
-/// fetched payload locally regardless of the reader's `ReadOptions::cache` setting.
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Deserialize, Serialize)]
 pub struct LoreStoragePutItem {
+    /// Caller-chosen id echoed back in `PUT_ITEM_COMPLETE`
     pub id: u64,
+    /// Target partition; the zero/default partition rejects with `INVALID_ARGUMENTS`
     pub partition: Partition,
+    /// Dedup tag stored alongside the content hash in the resulting address
     pub context: Context,
+    /// Borrowed view into caller memory; bytes must live until `Complete` fires
     pub data: LoreBytes,
+    /// Opt into remote upload — honored on the remote path, ignored local-only
     pub remote_write: u8,
+    /// Tag the fragment with `PayloadLocalCachePriority` so future remote reads always cache it locally
     pub local_cache: u8,
+    /// Leaf fragment size cap for large buffers; `0` lets `write_content` choose. Ignored
+    /// for buffers under `FRAGMENT_SIZE_THRESHOLD`
     pub fixed_size_chunk: u64,
 }
 
@@ -86,7 +82,9 @@ impl core::fmt::Debug for LoreStoragePutItem {
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize, LoreArgs)]
 #[handler(put_local)]
 pub struct LoreStoragePutArgs {
+    /// Open storage handle
     pub handle: LoreStore,
+    /// Buffers to store; each runs independently and emits its own `PUT_ITEM_COMPLETE`
     pub items: LoreArray<LoreStoragePutItem>,
 }
 

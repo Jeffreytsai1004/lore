@@ -19,15 +19,16 @@ use crate::call_delegation::dispatch_call;
 use crate::interface::LoreEventCallback;
 use crate::interface::LoreString;
 
+/// Arguments for adding a new link to a linked repository at the given path.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(add_local)]
 pub struct LoreLinkAddArgs {
     /// Link repository URL
     pub link: LoreString,
-    /// Path in repository where to add the link
+    /// Path within this repository where the link is added
     pub link_path: LoreString,
-    /// Source path in link repository
+    /// Source path within the linked repository; `/` or `\` means the root
     pub source_path: LoreString,
     /// Branch or revision to set the link pin at
     pub pin: LoreString,
@@ -110,11 +111,12 @@ async fn add_impl(
     .await
 }
 
+/// Arguments for removing a link from the repository at the given path.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(remove_local)]
 pub struct LoreLinkRemoveArgs {
-    // Path in repository where to remove the link
+    /// Path within this repository where the link is removed
     pub link_path: LoreString,
 }
 
@@ -173,6 +175,7 @@ async fn remove_impl(
     lore_revision::link::remove::remove(repository, token, link_path).await
 }
 
+/// Arguments for listing all linked repositories in the current repository.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(list_local)]
@@ -228,11 +231,12 @@ pub async fn list_staged(globals: LoreGlobalArgs, callback: LoreEventCallback) -
     .await
 }
 
+/// Arguments for updating the pin or properties of an existing link.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(update_local)]
 pub struct LoreLinkUpdateArgs {
-    /// Path in the repository where the link should be updated
+    /// Path within this repository of the link to update
     pub link_path: LoreString,
     /// Branch or specific revision to pin the link to
     pub pin: LoreString,

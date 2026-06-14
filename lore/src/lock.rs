@@ -15,13 +15,14 @@ use crate::call_delegation::dispatch_call;
 use crate::interface::LoreEventCallback;
 use crate::interface::LoreString;
 
+/// Arguments for acquiring file locks on the given paths for a branch.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(file_acquire_local)]
 pub struct LoreLockFileAcquireArgs {
-    /// Paths to acquire lock
+    /// Paths to acquire locks on
     pub paths: LoreArray<LoreString>,
-    /// Branch where lock is acquired
+    /// Branch the locks are acquired on
     pub branch: LoreString,
 }
 
@@ -101,13 +102,14 @@ pub async fn file_acquire_as_owner(
     .await
 }
 
+/// Arguments for returning the lock status of the given files on a branch.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(file_status_local)]
 pub struct LoreLockFileStatusArgs {
-    /// Paths to get the lock status
+    /// Paths to get the lock status of
     pub paths: LoreArray<LoreString>,
-    /// Branch where lock was acquired
+    /// Branch the locks were acquired on
     pub branch: LoreString,
 }
 
@@ -162,15 +164,16 @@ async fn file_status_local(
     .await
 }
 
+/// Arguments for querying file locks on a branch, optionally filtered by owner and path.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(file_query_local)]
 pub struct LoreLockFileQueryArgs {
     /// Branch to query locks on
     pub branch: LoreString,
-    /// Owner to query locks belonging to them
+    /// Owner filter; empty matches any owner
     pub owner: LoreString,
-    /// Path to query locks on
+    /// Path filter; empty matches any path
     pub path: LoreString,
 }
 
@@ -226,13 +229,14 @@ async fn file_query_local(
     .await
 }
 
+/// Arguments for releasing file locks on the given paths for a branch and owner.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(file_release_local)]
 pub struct LoreLockFileReleaseArgs {
-    /// Paths to release lock
+    /// Paths to release locks on
     pub paths: LoreArray<LoreString>,
-    /// Branch where lock was acquired
+    /// Branch the locks were acquired on
     pub branch: LoreString,
     /// Owner of the lock
     pub owner: LoreString,

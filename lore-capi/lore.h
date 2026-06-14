@@ -2150,8 +2150,9 @@ typedef struct lore_global_args_t {
   uint8_t sync_data;
 } lore_global_args_t;
 
+// Arguments for resolving user IDs to display names via the remote auth service.
 typedef struct lore_auth_user_info_args_t {
-  // User IDs to resolve
+  // User IDs to resolve; empty resolves the current user locally
   struct lore_string_array_t user_ids;
 } lore_auth_user_info_args_t;
 
@@ -2160,63 +2161,75 @@ typedef struct lore_event_callback_config_t {
   void (*func)(const struct lore_event_t *event, uint64_t user_context);
 } lore_event_callback_config_t;
 
+// Arguments for authenticating against a remote URL using a provided token.
 typedef struct lore_auth_login_with_token_args_t {
-  // Remote URL
+  // Remote URL; empty resolves from the repository config
   struct lore_string_t remote_url;
   // Authentication token
   struct lore_string_t token;
   // Token type
   struct lore_string_t token_type;
-  // Auth service URL with scheme (e.g. `ucs-auth://auth.example.com`).
-  // When non-empty, used directly instead of resolving from the server's
-  // environment endpoint. Required when no remote URL is available.
+  // Auth service URL with scheme (e.g. `ucs-auth://auth.example.com`); used
+  // directly when non-empty, required when no remote URL is available
   struct lore_string_t auth_url;
 } lore_auth_login_with_token_args_t;
 
+// Arguments for listing all stored authentication identities across endpoints.
 typedef struct lore_auth_list_args_t {
-  // Include cached tokens in the output
+  // Include the decrypted cached token in each identity
   uint8_t with_token;
 } lore_auth_list_args_t;
 
+// Arguments for removing stored authentication and authorization tokens.
 typedef struct lore_auth_logout_args_t {
-  // Auth service URL (empty to resolve from repository)
+  // Auth service URL; empty resolves from the repository
   struct lore_string_t auth_url;
-  // Resource ID (empty to remove all tokens for the auth URL, e.g. "urc-{id}" for a specific authorization)
+  // Resource ID (e.g. `urc-{id}`); empty removes all tokens for the auth URL
   struct lore_string_t resource;
-  // User identity to remove (empty to remove all identities)
+  // User identity to remove; empty removes all identities
   struct lore_string_t user_id;
 } lore_auth_logout_args_t;
 
+// Arguments for clearing all stored authentication identities and tokens.
 typedef struct lore_auth_clear_args_t {
   uint8_t _unused;
 } lore_auth_clear_args_t;
 
+// Arguments for resolving user identities from locally stored JWT tokens.
 typedef struct lore_auth_local_user_info_args_t {
-  // Auth service remote URL
+  // Auth service remote URL; empty resolves from the repository's remote environment
   struct lore_string_t auth_endpoint;
-  // User identities to resolve
+  // User identities to resolve; empty resolves the current user
   struct lore_string_array_t user_ids;
-  // Include cached tokens in the output
+  // Emit cached token details for identities with a local token
   uint8_t with_token;
 } lore_auth_local_user_info_args_t;
 
+// Arguments for authenticating interactively via browser-based login flow.
 typedef struct lore_auth_login_interactive_args_t {
-  // Remote URL
+  // Remote URL; empty resolves from the repository config
   struct lore_string_t remote_url;
-  // Avoid opening a browser for interactive login
+  // Emit the login URL instead of opening a browser
   uint8_t no_browser;
 } lore_auth_login_interactive_args_t;
 
+// Arguments for creating a new branch with the given name and category.
 typedef struct lore_branch_create_args_t {
+  // Name of the branch
   struct lore_string_t branch;
+  // Category of the branch
   struct lore_string_t category;
+  // Optional explicit branch ID (hex-encoded 16-byte context)
   struct lore_string_t id;
 } lore_branch_create_args_t;
 
+// Arguments for retrieving branch metadata (name, id, category, protection status).
 typedef struct lore_branch_info_args_t {
+  // Name of the branch
   struct lore_string_t branch;
 } lore_branch_info_args_t;
 
+// Arguments for diffing two branches, reporting changed and conflicting files.
 typedef struct lore_branch_diff_args_t {
   // Source branch name
   struct lore_string_t source;
@@ -2228,23 +2241,31 @@ typedef struct lore_branch_diff_args_t {
   uint8_t auto_resolve;
 } lore_branch_diff_args_t;
 
+// Arguments for applying write protection to a branch.
 typedef struct lore_branch_protect_args_t {
+  // Name of the branch
   struct lore_string_t branch;
 } lore_branch_protect_args_t;
 
+// Arguments for removing write protection from a branch.
 typedef struct lore_branch_unprotect_args_t {
+  // Name of the branch
   struct lore_string_t branch;
 } lore_branch_unprotect_args_t;
 
+// Arguments for archiving a branch locally and (unless local mode) on the remote.
 typedef struct lore_branch_archive_args_t {
+  // Name of the branch
   struct lore_string_t branch;
 } lore_branch_archive_args_t;
 
+// Arguments for listing all branches in the repository.
 typedef struct lore_branch_list_args_t {
   // Include archived local branches in listing
   uint8_t archived;
 } lore_branch_list_args_t;
 
+// Arguments for aborting an in-progress branch merge.
 typedef struct lore_branch_merge_abort_args_t {
   // Optional link path for link-scoped abort
   struct lore_string_t link;
@@ -2252,39 +2273,51 @@ typedef struct lore_branch_merge_abort_args_t {
   uint8_t ignore_links;
 } lore_branch_merge_abort_args_t;
 
+// Arguments for marking resolved merge paths as unresolved again.
 typedef struct lore_branch_merge_unresolve_args_t {
-  // An array of paths
+  // Paths to mark unresolved
   struct lore_string_array_t paths;
 } lore_branch_merge_unresolve_args_t;
 
+// Arguments for merging the current branch's staged changes into a target branch.
 typedef struct lore_branch_merge_into_args_t {
+  // Name of the target branch to merge into
   struct lore_string_t branch;
+  // ID of the target branch to merge into
   struct lore_context_t branch_id;
+  // Commit message for the auto-commit
   struct lore_string_t message;
+  // Optional link path for link-scoped merge into
   struct lore_string_t link;
+  // Merge only the main repository, skipping all linked repositories
   uint8_t ignore_links;
 } lore_branch_merge_into_args_t;
 
+// Arguments for marking conflicted paths as resolved.
 typedef struct lore_branch_merge_resolve_args_t {
-  // An array of paths
+  // Paths to mark resolved
   struct lore_string_array_t paths;
 } lore_branch_merge_resolve_args_t;
 
+// Arguments for resolving conflicts by accepting the local ("mine") version.
 typedef struct lore_branch_merge_resolve_mine_args_t {
-  // An array of paths
+  // Paths to resolve as "mine"
   struct lore_string_array_t paths;
 } lore_branch_merge_resolve_mine_args_t;
 
+// Arguments for resolving conflicts by accepting the incoming ("theirs") version.
 typedef struct lore_branch_merge_resolve_theirs_args_t {
-  // An array of paths
+  // Paths to resolve as "theirs"
   struct lore_string_array_t paths;
 } lore_branch_merge_resolve_theirs_args_t;
 
+// Arguments for re-applying merge conflict resolution for the given paths.
 typedef struct lore_branch_merge_restart_args_t {
-  // An array of paths
+  // Paths to re-materialize
   struct lore_string_array_t paths;
 } lore_branch_merge_restart_args_t;
 
+// Arguments for merging a source branch into the current branch.
 typedef struct lore_branch_merge_start_args_t {
   // Name of the source branch to merge into the current branch
   struct lore_string_t branch;
@@ -2298,6 +2331,7 @@ typedef struct lore_branch_merge_start_args_t {
   uint8_t ignore_links;
 } lore_branch_merge_start_args_t;
 
+// Arguments for switching the working directory to a different branch or revision.
 typedef struct lore_branch_switch_args_t {
   // Name of the branch
   struct lore_string_t branch;
@@ -2309,11 +2343,15 @@ typedef struct lore_branch_switch_args_t {
   uint8_t bare;
 } lore_branch_switch_args_t;
 
+// Arguments for resetting a branch's local LATEST pointer to a specific revision.
 typedef struct lore_branch_reset_args_t {
+  // Revision to reset the local LATEST pointer to
   struct lore_string_t revision;
+  // Branch to reset, current branch if empty
   struct lore_string_t branch;
 } lore_branch_reset_args_t;
 
+// Arguments for pushing a branch and its revisions to the remote.
 typedef struct lore_branch_push_args_t {
   // Optional branch to push, current branch if not given
   struct lore_string_t branch;
@@ -2321,6 +2359,7 @@ typedef struct lore_branch_push_args_t {
   uint8_t fast_forward_merge;
 } lore_branch_push_args_t;
 
+// Arguments for retrieving branch metadata (one key or all).
 typedef struct lore_branch_metadata_get_args_t {
   // Branch name or identifier
   struct lore_string_t branch;
@@ -2333,17 +2372,19 @@ typedef struct lore_metadata_type_array_t {
   uintptr_t count;
 } lore_metadata_type_array_t;
 
+// Arguments for setting one or more key-value pairs on branch metadata.
 typedef struct lore_branch_metadata_set_args_t {
   // Branch name or identifier
   struct lore_string_t branch;
-  // An array of keys
+  // Metadata keys to set (parallel with `values`/`formats`)
   struct lore_string_array_t keys;
-  // An array of values
+  // Values to set, one per key (decoded per the matching `formats` entry)
   struct lore_string_array_t values;
-  // An array of formats
+  // Value type for each key, one per key
   struct lore_metadata_type_array_t formats;
 } lore_branch_metadata_set_args_t;
 
+// Arguments for removing keys from branch metadata.
 typedef struct lore_branch_metadata_clear_args_t {
   // Branch name or identifier
   struct lore_string_t branch;
@@ -2351,6 +2392,7 @@ typedef struct lore_branch_metadata_clear_args_t {
   struct lore_string_array_t keys;
 } lore_branch_metadata_clear_args_t;
 
+// Arguments for retrieving file information (size, hash, staged status).
 typedef struct lore_file_info_args_t {
   // Array of paths
   struct lore_string_array_t paths;
@@ -2362,6 +2404,7 @@ typedef struct lore_file_info_args_t {
   uint8_t filtered;
 } lore_file_info_args_t;
 
+// Arguments for diffing files between two revisions.
 typedef struct lore_file_diff_args_t {
   // An array of paths
   struct lore_string_array_t paths;
@@ -2369,27 +2412,29 @@ typedef struct lore_file_diff_args_t {
   struct lore_string_t source_revision;
   // Target revision
   struct lore_string_t target_revision;
-  // If non-zero, produce three-way merge output with conflict markers
+  // Produce three-way merge output with conflict markers
   uint8_t diff3;
   // Number of unchanged context lines per unified-diff hunk
   uint32_t context_lines;
-  // When non-zero, lines that differ only in trailing whitespace are treated as equal
+  // Treat lines that differ only in trailing whitespace as equal
   uint8_t ignore_whitespace_eol;
-  // When non-zero, runs of internal whitespace are collapsed to a single space for comparison
+  // Collapse runs of internal whitespace to a single space for comparison
   uint8_t ignore_whitespace_inline;
 } lore_file_diff_args_t;
 
+// Arguments for computing the hash and size of one or more files.
 typedef struct lore_file_hash_args_t {
   // An array of paths
   struct lore_string_array_t paths;
 } lore_file_hash_args_t;
 
+// Arguments for retrieving the revision history of a specific file.
 typedef struct lore_file_history_args_t {
   // A path to a file
   struct lore_string_t path;
-  // Optional revision specifier
+  // Optional revision specifier to start from
   struct lore_string_t revision;
-  // Show revisions on specific branch
+  // Restrict history to revisions on this branch
   struct lore_string_t branch;
   // Number of revisions to list
   uint32_t length;
@@ -2397,11 +2442,13 @@ typedef struct lore_file_history_args_t {
   uint32_t depth;
 } lore_file_history_args_t;
 
+// Arguments for clearing all metadata associated with a file.
 typedef struct lore_file_metadata_clear_args_t {
   // Which file to clear metadata for
   struct lore_string_t path;
 } lore_file_metadata_clear_args_t;
 
+// Arguments for retrieving a single metadata value for a file by key and revision.
 typedef struct lore_file_metadata_get_args_t {
   // Revision to get metadata for
   struct lore_string_t revision;
@@ -2411,6 +2458,7 @@ typedef struct lore_file_metadata_get_args_t {
   struct lore_string_t key;
 } lore_file_metadata_get_args_t;
 
+// Arguments for listing all metadata key/value pairs for a file at a revision.
 typedef struct lore_file_metadata_list_args_t {
   // What to list metadata for
   struct lore_string_t path;
@@ -2423,6 +2471,7 @@ typedef struct lore_uint32_array_t {
   uintptr_t count;
 } lore_uint32_array_t;
 
+// Arguments for setting metadata key/value pairs on one or more files.
 typedef struct lore_file_metadata_set_args_t {
   // An array of paths
   struct lore_string_array_t paths;
@@ -2436,6 +2485,7 @@ typedef struct lore_file_metadata_set_args_t {
   struct lore_uint32_array_t entries;
 } lore_file_metadata_set_args_t;
 
+// Arguments for resetting files to a revision, optionally purging untracked files.
 typedef struct lore_file_reset_args_t {
   // Pointer to an array of paths
   struct lore_string_array_t paths;
@@ -2445,37 +2495,33 @@ typedef struct lore_file_reset_args_t {
   uint8_t purge;
 } lore_file_reset_args_t;
 
+// Arguments for resetting files to the last merged revision on a branch.
 typedef struct lore_file_reset_to_last_merged_args_t {
   // Pointer to an array of paths
   struct lore_string_array_t paths;
-  // Branch
+  // Branch whose last merged revision to reset to
   struct lore_string_t branch;
   // Purge untracked files
   uint8_t purge;
 } lore_file_reset_to_last_merged_args_t;
 
+// Arguments for staging one or more files for the next commit.
 typedef struct lore_file_stage_args_t {
   // An array of paths
   struct lore_string_array_t paths;
   // Case change handling, 0 = error, 1 = update filesystem (keep), 2 = update repository (rename)
   uint32_t case_change;
-  // Force a recursive filesystem scan for directory paths.
-  //
-  // Has no effect on individual file paths — those are always reconciled
-  // against the filesystem regardless of this flag.
-  //
-  // When `0` (default), directory paths stage only the files and child
-  // directories currently marked dirty in the repository state. When `1`,
-  // directory paths are walked recursively on the filesystem and every
-  // file is reconciled, ignoring the dirty flags.
+  // Force a recursive filesystem scan of directory paths (no effect on file paths)
   uint8_t scan;
 } lore_file_stage_args_t;
 
+// Arguments for staging one or more files as merge resolutions.
 typedef struct lore_file_stage_merge_args_t {
   // Paths to files to stage as merge
   struct lore_string_array_t paths;
 } lore_file_stage_merge_args_t;
 
+// Arguments for staging a file move from one path to another.
 typedef struct lore_file_stage_move_args_t {
   // Original path of file
   struct lore_string_t from_path;
@@ -2483,11 +2529,13 @@ typedef struct lore_file_stage_move_args_t {
   struct lore_string_t to_path;
 } lore_file_stage_move_args_t;
 
+// Arguments for marking files dirty in the staged state (add/modify/delete inferred from filesystem).
 typedef struct lore_file_dirty_args_t {
   // An array of paths
   struct lore_string_array_t paths;
 } lore_file_dirty_args_t;
 
+// Arguments for marking a file dirty-moved (relocates the staged node, no filesystem checks).
 typedef struct lore_file_dirty_move_args_t {
   // Original path of file
   struct lore_string_t from_path;
@@ -2495,6 +2543,7 @@ typedef struct lore_file_dirty_move_args_t {
   struct lore_string_t to_path;
 } lore_file_dirty_move_args_t;
 
+// Arguments for marking a file dirty-copied (creates a new staged destination node, no filesystem checks).
 typedef struct lore_file_dirty_copy_args_t {
   // Source path of file
   struct lore_string_t from_path;
@@ -2502,36 +2551,41 @@ typedef struct lore_file_dirty_copy_args_t {
   struct lore_string_t to_path;
 } lore_file_dirty_copy_args_t;
 
+// Arguments for removing one or more files from the staged changeset.
 typedef struct lore_file_unstage_args_t {
   // An array of paths
   struct lore_string_array_t paths;
 } lore_file_unstage_args_t;
 
+// Arguments for writing a file to a destination by path/revision or by address.
 typedef struct lore_file_write_args_t {
-  // Address of data to write
+  // Address of data to write; takes precedence over `path` when non-empty
   struct lore_string_t address;
-  // Path to a file
+  // Repository path to the file; used when `address` is empty
   struct lore_string_t path;
-  // Revision of file to write
+  // Revision of the file to write (used with `path`)
   struct lore_string_t revision;
-  // Output path of file
+  // Destination filesystem path to write to
   struct lore_string_t output;
 } lore_file_write_args_t;
 
+// Arguments for permanently removing a file or address from repository history.
 typedef struct lore_file_obliterate_args_t {
-  // Address of data to obliterate
+  // Address of data to obliterate; takes precedence over `path` when non-empty
   struct lore_string_t address;
-  // Path to a file to obliterate
+  // Repository path to obliterate; used when `address` is empty
   struct lore_string_t path;
 } lore_file_obliterate_args_t;
 
+// Arguments for dumping the binary content of a file by path or address.
 typedef struct lore_file_dump_args_t {
-  // Address of data to dump
+  // Address of data to dump; takes precedence over `path` when non-empty
   struct lore_string_t address;
-  // Or a path to a file
+  // Repository path to dump; used when `address` is empty
   struct lore_string_t path;
 } lore_file_dump_args_t;
 
+// Arguments for adding file dependencies, expanded from flat parallel arrays.
 typedef struct lore_file_dependency_add_args_t {
   // Source file paths that will have dependencies added.
   struct lore_string_array_t paths;
@@ -2547,6 +2601,7 @@ typedef struct lore_file_dependency_add_args_t {
   uint8_t force;
 } lore_file_dependency_add_args_t;
 
+// Arguments for removing file dependencies, expanded from flat parallel arrays.
 typedef struct lore_file_dependency_remove_args_t {
   // Source file paths to remove dependencies from.
   struct lore_string_array_t paths;
@@ -2560,6 +2615,7 @@ typedef struct lore_file_dependency_remove_args_t {
   struct lore_uint32_array_t tag_counts;
 } lore_file_dependency_remove_args_t;
 
+// Arguments for listing file dependencies (or dependents) at a given revision.
 typedef struct lore_file_dependency_list_args_t {
   // Files to query.
   struct lore_string_array_t paths;
@@ -2575,33 +2631,37 @@ typedef struct lore_file_dependency_list_args_t {
   uint32_t depth_limit;
 } lore_file_dependency_list_args_t;
 
+// Arguments for acquiring file locks on the given paths for a branch.
 typedef struct lore_lock_file_acquire_args_t {
-  // Paths to acquire lock
+  // Paths to acquire locks on
   struct lore_string_array_t paths;
-  // Branch where lock is acquired
+  // Branch the locks are acquired on
   struct lore_string_t branch;
 } lore_lock_file_acquire_args_t;
 
+// Arguments for returning the lock status of the given files on a branch.
 typedef struct lore_lock_file_status_args_t {
-  // Paths to get the lock status
+  // Paths to get the lock status of
   struct lore_string_array_t paths;
-  // Branch where lock was acquired
+  // Branch the locks were acquired on
   struct lore_string_t branch;
 } lore_lock_file_status_args_t;
 
+// Arguments for querying file locks on a branch, optionally filtered by owner and path.
 typedef struct lore_lock_file_query_args_t {
   // Branch to query locks on
   struct lore_string_t branch;
-  // Owner to query locks belonging to them
+  // Owner filter; empty matches any owner
   struct lore_string_t owner;
-  // Path to query locks on
+  // Path filter; empty matches any path
   struct lore_string_t path;
 } lore_lock_file_query_args_t;
 
+// Arguments for releasing file locks on the given paths for a branch and owner.
 typedef struct lore_lock_file_release_args_t {
-  // Paths to release lock
+  // Paths to release locks on
   struct lore_string_array_t paths;
-  // Branch where lock was acquired
+  // Branch the locks were acquired on
   struct lore_string_t branch;
   // Owner of the lock
   struct lore_string_t owner;
@@ -2609,12 +2669,13 @@ typedef struct lore_lock_file_release_args_t {
   struct lore_string_t owner_id;
 } lore_lock_file_release_args_t;
 
+// Arguments for adding a new link to a linked repository at the given path.
 typedef struct lore_link_add_args_t {
   // Link repository URL
   struct lore_string_t link;
-  // Path in repository where to add the link
+  // Path within this repository where the link is added
   struct lore_string_t link_path;
-  // Source path in link repository
+  // Source path within the linked repository; `/` or `\` means the root
   struct lore_string_t source_path;
   // Branch or revision to set the link pin at
   struct lore_string_t pin;
@@ -2622,21 +2683,26 @@ typedef struct lore_link_add_args_t {
   uint8_t disable_branching;
 } lore_link_add_args_t;
 
+// Arguments for removing a link from the repository at the given path.
 typedef struct lore_link_remove_args_t {
+  // Path within this repository where the link is removed
   struct lore_string_t link_path;
 } lore_link_remove_args_t;
 
+// Arguments for listing all linked repositories in the current repository.
 typedef struct lore_link_list_args_t {
   int _unused;
 } lore_link_list_args_t;
 
+// Arguments for updating the pin or properties of an existing link.
 typedef struct lore_link_update_args_t {
-  // Path in the repository where the link should be updated
+  // Path within this repository of the link to update
   struct lore_string_t link_path;
   // Branch or specific revision to pin the link to
   struct lore_string_t pin;
 } lore_link_update_args_t;
 
+// Arguments for cloning a remote repository to the local path.
 typedef struct lore_repository_clone_args_t {
   // URL to the repository
   struct lore_string_t repository_url;
@@ -2674,17 +2740,23 @@ typedef struct lore_repository_clone_args_t {
   uint32_t dependency_depth_limit;
 } lore_repository_clone_args_t;
 
+// Arguments for retrieving metadata about a remote repository.
 typedef struct lore_repository_info_args_t {
-  // Repository URL
+  // URL of the remote repository to query
   struct lore_string_t repository_url;
 } lore_repository_info_args_t;
 
+// Arguments for dumping the internal state tree of the repository.
 typedef struct lore_repository_dump_args_t {
+  // Revision to dump; empty string uses the current revision
   struct lore_string_t revision;
+  // Repository-relative path to start dumping from; empty dumps the root
   struct lore_string_t path;
+  // Maximum tree traversal depth
   uintptr_t max_depth;
 } lore_repository_dump_args_t;
 
+// Arguments for creating a new repository at the specified URL.
 typedef struct lore_repository_create_args_t {
   // URL to the repository
   struct lore_string_t repository_url;
@@ -2698,18 +2770,22 @@ typedef struct lore_repository_create_args_t {
   struct lore_string_t shared_store_path;
 } lore_repository_create_args_t;
 
+// Arguments for waiting on outstanding asynchronous repository tasks.
 typedef struct lore_repository_flush_args_t {
   int _unused;
 } lore_repository_flush_args_t;
 
+// Arguments for running garbage collection on the local repository store.
 typedef struct lore_repository_gc_args_t {
   int _unused;
 } lore_repository_gc_args_t;
 
+// Arguments for releasing cached store references for the repository path.
 typedef struct lore_repository_release_args_t {
   int _unused;
 } lore_repository_release_args_t;
 
+// Arguments for adding a layer from a source repository into the current repository.
 typedef struct lore_layer_add_args_t {
   // Path in the current repository where the layer should be placed
   struct lore_string_t target_path;
@@ -2721,6 +2797,7 @@ typedef struct lore_layer_add_args_t {
   struct lore_string_t metadata;
 } lore_layer_add_args_t;
 
+// Arguments for removing a layer from the repository at the specified path.
 typedef struct lore_layer_remove_args_t {
   // Path in the current repository where the layer is placed
   struct lore_string_t target_path;
@@ -2730,27 +2807,30 @@ typedef struct lore_layer_remove_args_t {
   uint8_t purge;
 } lore_layer_remove_args_t;
 
+// Arguments for listing all layers configured in the repository (no parameters).
 typedef struct lore_layer_list_args_t {
   int _unused;
 } lore_layer_list_args_t;
 
+// Arguments for listing all repositories available at a remote URL.
 typedef struct lore_repository_list_args_t {
-  // Remote URL
+  // Remote URL to list repositories from
   struct lore_string_t url;
 } lore_repository_list_args_t;
 
+// Arguments for reporting the working directory status.
 typedef struct lore_repository_status_args_t {
-  // Include staged or not
+  // Include staged state in the report
   uint8_t staged;
   // Reconcile against the filesystem and refresh dirty tracking.
   //
-  // When `0` (default), status reports the currently tracked state: the
+  // By default, status reports the currently tracked state: the
   // staged revision (if any) plus any files and directories already
   // marked dirty. No filesystem reads are performed beyond the existing
   // dirty flags — clean or unmarked files on disk are not inspected even
   // if they differ from the current revision.
   //
-  // When `1`, the filesystem is walked under each requested path, every
+  // When enabled, the filesystem is walked under each requested path, every
   // file is reconciled against the current revision, and dirty flags are
   // set or cleared accordingly. The refreshed flags are persisted in the
   // staged state so subsequent operations (commit, stage, status) see an
@@ -2758,40 +2838,45 @@ typedef struct lore_repository_status_args_t {
   uint8_t scan;
   // Verify dirty flags against the filesystem without a full scan.
   //
-  // When `1`, files already marked dirty are re-examined individually: a
+  // When enabled, files already marked dirty are re-examined individually: a
   // dirty file whose on-disk content matches its tracked node (same size,
   // and same content when the modification time differs) has its dirty flag
   // cleared and is omitted from the report, unless it is also staged.
   // Structural dirty actions (add/move/copy/delete) are always reported.
   // The refreshed flags are persisted in the staged state.
   uint8_t check_dirty;
-  // Reset the current tracked state before computing current status
+  // Reset the tracked state before computing status
   uint8_t reset;
-  // Include sync point or not
+  // Include the sync point in the report
   uint8_t sync_point;
-  // Only emit revision info, skip all diffs
+  // Only emit revision info, skipping all diffs
   uint8_t revision_only;
   // Count directories and files (view-filtered) in the staged state if
   // present, otherwise the current revision
   uint8_t count;
-  // Optional path to limit status check to
+  // Repository-relative paths to limit the status check to; empty checks all
   struct lore_string_array_t paths;
 } lore_repository_status_args_t;
 
+// Arguments for querying the local immutable store by fragment address.
 typedef struct lore_repository_store_immutable_query_args_t {
-  // Address to query
+  // Fragment address to query
   struct lore_string_t address;
-  // Recurse and query subfragments
+  // Recurse into and query subfragments
   uint8_t recurse;
 } lore_repository_store_immutable_query_args_t;
 
+// Arguments for verifying the integrity of the local repository state.
 typedef struct lore_repository_verify_state_args_t {
-  // Optional path
+  // Repository-relative path to verify; empty verifies the whole repository
   struct lore_string_t path;
+  // Heal detected inconsistencies
   uint8_t heal;
 } lore_repository_verify_state_args_t;
 
+// Arguments for committing staged changes into a new revision.
 typedef struct lore_revision_commit_args_t {
+  // Commit message
   struct lore_string_t message;
   // If set, commit only this linked repository (mount path relative to repo root)
   struct lore_string_t link;
@@ -2807,73 +2892,94 @@ typedef struct lore_revision_commit_args_t {
   struct lore_string_array_t layer_messages;
 } lore_revision_commit_args_t;
 
+// Arguments for amending the most recent revision's commit message.
 typedef struct lore_revision_amend_args_t {
+  // New commit message
   struct lore_string_t message;
 } lore_revision_amend_args_t;
 
+// Arguments for retrieving metadata and file information for a revision.
 typedef struct lore_revision_info_args_t {
-  // Revision to get info for
+  // Revision to get info for; empty for current
   struct lore_string_t revision;
-  // Include delta information or not
+  // Include delta against parent
   uint8_t delta;
-  // Include file metadata information or not
+  // Include file metadata entries
   uint8_t metadata;
 } lore_revision_info_args_t;
 
+// Arguments for computing file-level differences between two revisions.
 typedef struct lore_revision_diff_args_t {
-  // Source revision
+  // Source revision to diff from
   struct lore_string_t revision_source;
-  // Target revision
+  // Target revision to diff to; empty for current
   struct lore_string_t revision_target;
-  // Paths in repository to diff
+  // Repository-relative paths to restrict the diff to; empty for all
   struct lore_string_array_t paths;
 } lore_revision_diff_args_t;
 
+// Arguments for finding revisions by metadata or revision number.
 typedef struct lore_revision_find_args_t {
+  // Metadata key to search for; non-empty selects key/value search
   struct lore_string_t key;
+  // Metadata value to match against `key`
   struct lore_string_t value;
+  // Revision number to search for when `key` is empty; 0 disables
   uint64_t number;
 } lore_revision_find_args_t;
 
+// Arguments for retrieving the revision history of a branch or revision.
 typedef struct lore_revision_history_args_t {
+  // Start from this revision; empty for current
   struct lore_string_t revision;
+  // Restrict to this branch; empty for current
   struct lore_string_t branch;
+  // Stop at revisions created before this date (Unix timestamp; 0 disables)
   uint64_t date;
+  // Maximum number of revisions to return; 0 for unlimited
   uint32_t length;
+  // Stop when reaching a different branch
   uint8_t only_branch;
 } lore_revision_history_args_t;
 
+// Arguments for restoring the current branch to a previously synced revision.
 typedef struct lore_revision_restore_args_t {
+  // Commit message for the restored revision
   struct lore_string_t message;
 } lore_revision_restore_args_t;
 
+// Arguments for clearing all metadata from the current revision.
 typedef struct lore_revision_metadata_clear_args_t {
   int _unused;
 } lore_revision_metadata_clear_args_t;
 
+// Arguments for retrieving a single metadata value by key from a revision.
 typedef struct lore_revision_metadata_get_args_t {
-  // Metadata key
+  // Metadata key to look up
   struct lore_string_t key;
-  // Revision to get metadata for
+  // Revision to get metadata for; empty for current
   struct lore_string_t revision;
 } lore_revision_metadata_get_args_t;
 
+// Arguments for listing all metadata key/value pairs of a revision.
 typedef struct lore_revision_metadata_list_args_t {
-  // Revision to list metadata for
+  // Revision to list metadata for; empty for current
   struct lore_string_t revision;
 } lore_revision_metadata_list_args_t;
 
+// Arguments for setting metadata key/value pairs on the current revision.
 typedef struct lore_revision_metadata_set_args_t {
-  // An array of keys
+  // Metadata keys (parallel with `values` and `formats`)
   struct lore_string_array_t keys;
-  // An array of values
+  // Metadata values, decoded per the matching format
   struct lore_string_array_t values;
-  // An array of formats
+  // Value type for each entry
   struct lore_metadata_type_array_t formats;
 } lore_revision_metadata_set_args_t;
 
+// Arguments for synchronizing the working directory to a target revision.
 typedef struct lore_revision_sync_args_t {
-  // (Optional) Revision to synchronize to
+  // Revision to synchronize to; empty for branch tip
   struct lore_string_t revision;
   // Fast forward and keep local changes when syncing to a local revision
   uint8_t forward_changes;
@@ -2885,10 +2991,11 @@ typedef struct lore_revision_sync_args_t {
   struct lore_string_array_t dependency_tags;
   // Follow transitive dependencies recursively
   uint8_t dependency_recursive;
-  // Maximum dependency traversal depth. 0 means unlimited.
+  // Maximum dependency traversal depth; 0 means unlimited
   uint32_t dependency_depth_limit;
 } lore_revision_sync_args_t;
 
+// Arguments for reverting the working directory to a specified revision.
 typedef struct lore_revision_revert_args_t {
   // Revision to revert
   struct lore_string_t revision;
@@ -2898,132 +3005,109 @@ typedef struct lore_revision_revert_args_t {
   uint8_t no_commit;
 } lore_revision_revert_args_t;
 
+// Arguments for aborting a revert operation in progress.
 typedef struct lore_revision_revert_abort_args_t {
   int _unused;
 } lore_revision_revert_abort_args_t;
 
+// Arguments for marking revert paths as unresolved again.
 typedef struct lore_revision_revert_unresolve_args_t {
-  // An array of paths
+  // Repository-relative paths to mark unresolved
   struct lore_string_array_t paths;
 } lore_revision_revert_unresolve_args_t;
 
+// Arguments for restarting revert conflict resolution for paths.
 typedef struct lore_revision_revert_restart_args_t {
-  // An array of paths
+  // Repository-relative paths to re-materialize for resolution
   struct lore_string_array_t paths;
 } lore_revision_revert_restart_args_t;
 
+// Arguments for marking revert conflicts as resolved for paths.
 typedef struct lore_revision_revert_resolve_args_t {
-  // An array of paths
+  // Repository-relative paths to mark resolved
   struct lore_string_array_t paths;
 } lore_revision_revert_resolve_args_t;
 
+// Arguments for resolving revert conflicts by keeping the "mine" version.
 typedef struct lore_revision_revert_resolve_mine_args_t {
-  // An array of paths
+  // Repository-relative paths to resolve in favor of "mine"
   struct lore_string_array_t paths;
 } lore_revision_revert_resolve_mine_args_t;
 
+// Arguments for resolving revert conflicts by keeping the "theirs" version.
 typedef struct lore_revision_revert_resolve_theirs_args_t {
-  // An array of paths
+  // Repository-relative paths to resolve in favor of "theirs"
   struct lore_string_array_t paths;
 } lore_revision_revert_resolve_theirs_args_t;
 
+// Arguments for creating a new shared store.
 typedef struct lore_shared_store_create_args_t {
+  // Remote URL backing the store
   struct lore_string_t remote_url;
+  // Path where the store will be created; empty string uses the default location
   struct lore_string_t path;
+  // Set this as the default shared store in the global config
   uint8_t make_default;
 } lore_shared_store_create_args_t;
 
+// Arguments for querying the configured default shared store (no parameters).
 typedef struct lore_shared_store_info_args_t {
   int _unused;
 } lore_shared_store_info_args_t;
 
+// Arguments for setting whether to automatically use the shared store.
 typedef struct lore_shared_store_set_use_automatically_args_t {
-  // Whether to automatically use the shared store
+  // Automatically use the shared store
   uint8_t enabled;
 } lore_shared_store_set_use_automatically_args_t;
 
 // Remote endpoint configuration for a storage handle.
-//
-// `remote_url` is the gRPC endpoint of a peer storage service. The handle's `globals.identity`
-// from the open call is used for authentication.
 typedef struct lore_storage_remote_config_t {
+  // gRPC endpoint of the peer storage service; authenticated with the open call's `globals.identity`
   struct lore_string_t remote_url;
 } lore_storage_remote_config_t;
 
 // Arguments for `lore_storage_open`.
-//
-// `repository_path` + `in_memory` select the mode:
-// - `repository_path` non-empty, `in_memory == 0` → disk-backed.
-// - `repository_path` empty, `in_memory == 1` → in-memory.
-// - Any other combination returns `LORE_ERROR_CODE_INVALID_ARGUMENTS`.
-//
-// `has_remote_config != 0` activates `remote_config`. When unset, ops that would otherwise
-// reach a remote (put with `remote_write=1`, get on local miss, copy server-side, upload)
-// behave as local-only.
-//
-// `cache_target_bytes` / `cache_target_fragments` are honored only when `globals.gc != 0`;
-// the handle then spawns the immutable store's evictor (capacity-driven, fragment count) and
-// compactor (size-driven, total bytes). A field of `0` falls back to the built-in default
-// (1 GiB / 1 M fragments). When `globals.gc == 0` no background tasks spawn and these fields
-// are ignored.
 typedef struct lore_storage_open_args_t {
-  // Path to an existing lore repository. Must be empty when
-  // `in_memory == 1`.
+  // Path to an existing lore repository; must be empty when `in_memory` is set
   struct lore_string_t repository_path;
-  // Set to 1 to open a fresh in-memory store; `repository_path` must
-  // be empty in that case.
+  // Open a fresh in-memory store; `repository_path` must then be empty
   uint8_t in_memory;
-  // Remote endpoint binding for ops that consult a peer storage service. Only honored when
-  // `has_remote_config != 0`.
+  // Remote endpoint binding for ops that consult a peer; honored only when `has_remote_config` is set
   struct lore_storage_remote_config_t remote_config;
-  // Set to 1 to activate `remote_config`; 0 leaves the handle with no remote.
+  // Activate `remote_config`; otherwise the handle has no remote
   uint8_t has_remote_config;
-  // Soft cap on the total bytes held in the immutable store; the compactor reduces below
-  // this when running. Only honored when `globals.gc != 0`. `0` selects the built-in
-  // default. Disk-backed handles share the underlying immutable-store `Arc` keyed by
-  // canonical path: the first open of a given path wins, and subsequent opens of the same
-  // path inherit the first call's `cache_target_*` values silently — this field has no
-  // effect on those subsequent opens.
+  // Soft cap on total immutable-store bytes (compactor target); honored only when `globals.gc`
+  // is set. `0` selects the default; shared disk backends inherit the first opener's value
   uint64_t cache_target_bytes;
-  // Soft cap on the total fragment count in the immutable store; the evictor reduces below
-  // this when running. Only honored when `globals.gc != 0`. `0` selects the built-in
-  // default. See `cache_target_bytes` regarding first-open-wins for shared backends.
+  // Soft cap on immutable-store fragment count (evictor target); honored only when `globals.gc`
+  // is set. `0` selects the default
   uint64_t cache_target_fragments;
 } lore_storage_open_args_t;
 
 // Opaque handle to an open content-addressed storage instance.
-//
-// The wrapped `handle_id` is the registry key; library code MUST look up
-// the corresponding [`StoreInternal`] through [`lookup`] before dispatch,
-// and MUST NOT cast directly to or from raw pointers.
-//
-// The `0` id is reserved for "invalid / unregistered" so a freshly
-// zero-initialized `lore_store_t` in C behaves like a null handle.
 typedef struct lore_store_t {
+  // Registry key; `0` is the reserved invalid/unregistered sentinel (zero-init = null handle)
   uint64_t handle_id;
 } lore_store_t;
 #define LORE_STORE_INVALID (lore_store_t){ .handle_id = 0 }
 
 // One put item — a buffer to hash and store at `(partition, context)`.
-//
-// `data` is a borrowed view into caller memory; the bytes must live until `Complete` fires.
-// `remote_write` is the FFI flag for opting into remote upload; the remote path consumes it
-// when available, the local-only path ignores it.
-//
-// `fixed_size_chunk` controls the leaf fragment size when the buffer exceeds
-// `FRAGMENT_SIZE_THRESHOLD`: zero means "let `write_content` choose"; a non-zero value caps the
-// leaf size (clamped to the threshold). Buffers under the threshold ignore the field.
-//
-// `local_cache` (0 or 1) tags the resulting fragment with `PayloadLocalCachePriority` — a
-// producer-side hint that any future remote read of this address should always cache the
-// fetched payload locally regardless of the reader's `ReadOptions::cache` setting.
 typedef struct lore_storage_put_item_t {
+  // Caller-chosen id echoed back in `PUT_ITEM_COMPLETE`
   uint64_t id;
+  // Target partition; the zero/default partition rejects with `INVALID_ARGUMENTS`
   struct lore_partition_t partition;
+  // Dedup tag stored alongside the content hash in the resulting address
   struct lore_context_t context;
+  // Borrowed view into caller memory; bytes must live until `Complete` fires
   struct lore_bytes_t data;
+  // Opt into remote upload — honored on the remote path, ignored local-only
   uint8_t remote_write;
+  // Tag the fragment with `PayloadLocalCachePriority` so future remote reads always cache it locally
   uint8_t local_cache;
+  // Leaf fragment size cap for large buffers; `0` lets `write_content` choose. Ignored
+  // for buffers under `FRAGMENT_SIZE_THRESHOLD`
   uint64_t fixed_size_chunk;
 } lore_storage_put_item_t;
 
@@ -3034,22 +3118,24 @@ typedef struct lore_storage_put_item_array_t {
 
 // Arguments for `lore_storage_put`.
 typedef struct lore_storage_put_args_t {
+  // Open storage handle
   struct lore_store_t handle;
+  // Buffers to store; each runs independently and emits its own `PUT_ITEM_COMPLETE`
   struct lore_storage_put_item_array_t items;
 } lore_storage_put_args_t;
 
 // One get item — the `(partition, address)` to read.
 typedef struct lore_storage_get_item_t {
+  // Caller-chosen id echoed back in every event for this item
   uint64_t id;
+  // Partition to read from; the zero/default partition rejects with `INVALID_ARGUMENTS`
   struct lore_partition_t partition;
+  // Content address to read; `hash == Hash::default()` short-circuits to an empty buffer
   struct lore_address_t address;
-  // Streaming mode — `0` = single reassembled buffer; `1` = one
-  // `GET_DATA` per leaf fragment with offsets.
+  // Stream one `GET_DATA` per leaf fragment instead of a single reassembled buffer
   uint8_t streaming;
-  // `0` (default): a remote-fetched payload is delivered to the caller without populating
-  // the local immutable store, unless the producer flagged the fragment with
-  // `PayloadLocalCachePriority`. `1`: force the read pipeline's `with_cache()` so this
-  // fetch's bytes are written back to the local store regardless of the producer hint.
+  // Cache fetched bytes back to the local store even without the producer's
+  // `PayloadLocalCachePriority` hint
   uint8_t local_cache;
 } lore_storage_get_item_t;
 
@@ -3060,24 +3146,31 @@ typedef struct lore_storage_get_item_array_t {
 
 // Arguments for `lore_storage_get`.
 typedef struct lore_storage_get_args_t {
+  // Open storage handle
   struct lore_store_t handle;
+  // Addresses to read; each runs independently and emits its own event sequence
   struct lore_storage_get_item_array_t items;
 } lore_storage_get_args_t;
 
 // Arguments for `lore_storage_close`.
 typedef struct lore_storage_close_args_t {
+  // Handle to release; from `LORE_EVENT_STORAGE_OPENED`
   struct lore_store_t handle;
 } lore_storage_close_args_t;
 
 // Arguments for `lore_storage_flush`.
 typedef struct lore_storage_flush_args_t {
+  // Open handle whose pending writes to flush
   struct lore_store_t handle;
 } lore_storage_flush_args_t;
 
 // One `get_metadata` item — the `(partition, address)` to look up.
 typedef struct lore_storage_get_metadata_item_t {
+  // Caller-chosen id echoed back in `GET_METADATA_ITEM_COMPLETE`
   uint64_t id;
+  // Partition to look up; the zero/default partition rejects with `INVALID_ARGUMENTS`
   struct lore_partition_t partition;
+  // Content address to look up; `hash == Hash::default()` short-circuits to an empty fragment
   struct lore_address_t address;
 } lore_storage_get_metadata_item_t;
 
@@ -3088,14 +3181,19 @@ typedef struct lore_storage_get_metadata_item_array_t {
 
 // Arguments for `lore_storage_get_metadata`.
 typedef struct lore_storage_get_metadata_args_t {
+  // Open storage handle
   struct lore_store_t handle;
+  // Addresses to look up; each runs independently and emits its own `GET_METADATA_ITEM_COMPLETE`
   struct lore_storage_get_metadata_item_array_t items;
 } lore_storage_get_metadata_args_t;
 
 // One obliterate item — the `(partition, address)` to delete.
 typedef struct lore_storage_obliterate_item_t {
+  // Caller-chosen id echoed back in `OBLITERATE_ITEM_COMPLETE`
   uint64_t id;
+  // Partition to delete from; the zero/default partition rejects with `INVALID_ARGUMENTS`
   struct lore_partition_t partition;
+  // Content address to delete; absence on a side is idempotent success for that side
   struct lore_address_t address;
 } lore_storage_obliterate_item_t;
 
@@ -3106,25 +3204,26 @@ typedef struct lore_storage_obliterate_item_array_t {
 
 // Arguments for `lore_storage_obliterate`.
 typedef struct lore_storage_obliterate_args_t {
+  // Open storage handle
   struct lore_store_t handle;
+  // Addresses to delete; each runs independently and emits its own `OBLITERATE_ITEM_COMPLETE`
   struct lore_storage_obliterate_item_array_t items;
 } lore_storage_obliterate_args_t;
 
 // One copy item — relocate content from `(source_partition, source_address)` to
-// `(target_partition, source_address.hash, target_context)`. The hash is preserved across the
-// copy (content-addressed), but partition and context can both differ from the source — same
-// partition with a different `target_context` performs in-partition payload duplication
-// without ever transferring the bytes.
+// `(target_partition, source_address.hash, target_context)`, preserving the content hash.
 typedef struct lore_storage_copy_item_t {
+  // Caller-chosen id echoed back in `COPY_ITEM_COMPLETE`
   uint64_t id;
+  // Source partition; the zero/default partition rejects with `INVALID_ARGUMENTS`
   struct lore_partition_t source_partition;
+  // Destination partition; zero/default rejects, as does an exact `(source_partition, source
+  // context)` match (no-op) — a different `target_context` enables in-partition duplication
   struct lore_partition_t target_partition;
+  // Source content address; its `hash` carries over to the destination address unchanged
   struct lore_address_t source_address;
-  // Destination context. The destination address is
-  // `(target_partition, source_address.hash, target_context)`. May equal `source_address.context`
-  // (a regular cross-partition copy preserving the dedup tag) or differ from it (re-tagging the
-  // destination, including the same-partition different-context case used to duplicate a
-  // payload reference under a new dedup tag).
+  // Dedup tag for the destination address `(target_partition, source_address.hash,
+  // target_context)`; may match the source tag or re-tag the payload
   struct lore_context_t target_context;
 } lore_storage_copy_item_t;
 
@@ -3135,22 +3234,29 @@ typedef struct lore_storage_copy_item_array_t {
 
 // Arguments for `lore_storage_copy`.
 typedef struct lore_storage_copy_args_t {
+  // Open storage handle
   struct lore_store_t handle;
+  // Copy requests; each runs independently and emits its own `COPY_ITEM_COMPLETE`
   struct lore_storage_copy_item_array_t items;
 } lore_storage_copy_args_t;
 
 // One `put_file` item — read the file at `path` and store it at
 // `(partition, context)`.
 typedef struct lore_storage_put_file_item_t {
+  // Caller-chosen id echoed back in `PUT_ITEM_COMPLETE`
   uint64_t id;
+  // Target partition; the zero/default partition rejects with `INVALID_ARGUMENTS`
   struct lore_partition_t partition;
+  // Dedup tag stored alongside the content hash in the resulting address
   struct lore_context_t context;
+  // Source path; empty, missing, or non-file rejects with `INVALID_ARGUMENTS`; a zero-length
+  // file maps to the zero-hash address
   struct lore_string_t path;
+  // Opt into remote upload — honored on the remote path, ignored local-only
   uint8_t remote_write;
-  // Same semantics as `LoreStoragePutItem::local_cache` — tags the resulting fragment with
-  // `PayloadLocalCachePriority` so future remote reads of this address always cache locally.
+  // Tag the resulting fragment with `PayloadLocalCachePriority` so future remote reads always cache it locally
   uint8_t local_cache;
-  // Same semantics as `LoreStoragePutItem::fixed_size_chunk`.
+  // Leaf fragment size cap for large files; `0` lets `write_content` choose
   uint64_t fixed_size_chunk;
 } lore_storage_put_file_item_t;
 
@@ -3161,20 +3267,25 @@ typedef struct lore_storage_put_file_item_array_t {
 
 // Arguments for `lore_storage_put_file`.
 typedef struct lore_storage_put_file_args_t {
+  // Open storage handle
   struct lore_store_t handle;
+  // Files to store; each runs independently and emits its own `PUT_ITEM_COMPLETE`
   struct lore_storage_put_file_item_array_t items;
 } lore_storage_put_file_args_t;
 
 // One `get_file` item — read content at `(partition, address)` and
 // write it to the file at `path`.
 typedef struct lore_storage_get_file_item_t {
+  // Caller-chosen id echoed back in `GET_ITEM_COMPLETE`
   uint64_t id;
+  // Partition to read from; the zero/default partition rejects with `INVALID_ARGUMENTS`
   struct lore_partition_t partition;
+  // Content address to read; `hash == Hash::default()` truncates `path` to zero bytes
   struct lore_address_t address;
+  // Destination path; empty rejects with `INVALID_ARGUMENTS`. Multi-fragment writes
+  // stage via `<path>.loretmp` then atomically rename
   struct lore_string_t path;
-  // Same semantics as `LoreStorageGetItem::local_cache` — `1` forces a local-store cache
-  // populate of the remote-fetched fragments in addition to writing the bytes to `path`.
-  // `0` (default) leaves caching to the producer-side `PayloadLocalCachePriority` hint.
+  // Cache fetched fragments back to the local store, not just write them to `path`
   uint8_t local_cache;
 } lore_storage_get_file_item_t;
 
@@ -3185,14 +3296,19 @@ typedef struct lore_storage_get_file_item_array_t {
 
 // Arguments for `lore_storage_get_file`.
 typedef struct lore_storage_get_file_args_t {
+  // Open storage handle
   struct lore_store_t handle;
+  // Addresses and destination paths; each runs independently
   struct lore_storage_get_file_item_array_t items;
 } lore_storage_get_file_args_t;
 
 // One upload item — the `(partition, address)` of locally-stored content to push to remote.
 typedef struct lore_storage_upload_item_t {
+  // Caller-chosen id echoed back in `UPLOAD_ITEM_COMPLETE`
   uint64_t id;
+  // Partition of the local content to push; the zero/default partition rejects with `INVALID_ARGUMENTS`
   struct lore_partition_t partition;
+  // Local content address to push; `hash == Hash::default()` is no-op success with `already_durable=1`
   struct lore_address_t address;
 } lore_storage_upload_item_t;
 
@@ -3203,26 +3319,34 @@ typedef struct lore_storage_upload_item_array_t {
 
 // Arguments for `lore_storage_upload`.
 typedef struct lore_storage_upload_args_t {
+  // Open storage handle; must have been opened with `remote_config`
   struct lore_store_t handle;
+  // Addresses to push to remote; each runs independently and emits its own `UPLOAD_ITEM_COMPLETE`
   struct lore_storage_upload_item_array_t items;
 } lore_storage_upload_args_t;
 
+// Arguments for starting the Lore service process for the current repository (no parameters).
 typedef struct lore_service_start_args_t {
   int _unused;
 } lore_service_start_args_t;
 
+// Arguments for stopping the Lore service process for the current or all repositories.
 typedef struct lore_service_stop_args_t {
+  // Stop all repositories rather than just the current one
   uint8_t all;
 } lore_service_stop_args_t;
 
+// Arguments for subscribing to repository notifications (no parameters).
 typedef struct lore_notification_subscribe_args_t {
   int _unused;
 } lore_notification_subscribe_args_t;
 
+// Arguments for unsubscribing from repository notifications (no parameters).
 typedef struct lore_notification_unsubscribe_args_t {
   int _unused;
 } lore_notification_unsubscribe_args_t;
 
+// Configuration controlling Lore's file and event logging.
 typedef struct lore_log_config_t {
   // Enable logging to a file (disabled by default)
   uint8_t file;
@@ -3250,165 +3374,216 @@ typedef void *(*lore_realloc_fn)(void *ptr, uintptr_t align, uintptr_t size);
 
 typedef void (*lore_dealloc_fn)(void *ptr);
 
+// Arguments for retrieving repository metadata.
 typedef struct lore_repository_metadata_get_args_t {
-  // Metadata key (empty string lists all)
+  // Metadata key to fetch; empty string lists all entries
   struct lore_string_t key;
 } lore_repository_metadata_get_args_t;
 
+// Arguments for setting metadata key-value pairs on the current repository.
 typedef struct lore_repository_metadata_set_args_t {
-  // An array of keys
+  // Metadata keys to set, positionally aligned with `values` and `formats`
   struct lore_string_array_t keys;
-  // An array of values
+  // Values to set, one per key, encoded per the matching `formats` entry
   struct lore_string_array_t values;
-  // An array of formats
+  // Value format/type for each key-value pair
   struct lore_metadata_type_array_t formats;
 } lore_repository_metadata_set_args_t;
 
+// Arguments for removing metadata keys from the current repository.
 typedef struct lore_repository_metadata_clear_args_t {
-  // Keys to clear (empty array clears all user-defined keys)
+  // Keys to clear; empty array clears all user-defined keys
   struct lore_string_array_t keys;
 } lore_repository_metadata_clear_args_t;
 
+// Arguments for listing the tracked instances of the repository.
 typedef struct lore_repository_instance_list_args_t {
   int _unused;
 } lore_repository_instance_list_args_t;
 
+// Arguments for pruning stale instances of the repository.
 typedef struct lore_repository_instance_prune_args_t {
   int _unused;
 } lore_repository_instance_prune_args_t;
 
+// Arguments for updating the recorded path of the current repository instance.
 typedef struct lore_repository_update_path_args_t {
   int _unused;
 } lore_repository_update_path_args_t;
 
+// Arguments for reading a value from the repository config.
 typedef struct lore_repository_config_get_args_t {
+  // Config key to read (`remote_url` or `identity`)
   struct lore_string_t key;
 } lore_repository_config_get_args_t;
 
 // Opaque handle to an open memory-based revision tree instance.
 //
-// `handle_id` is the registry key; library code MUST look up the
-// corresponding [`RevisionTreeInternal`] through [`lookup`] before
-// dispatch and MUST NOT cast directly to or from raw pointers.
-//
-// The `0` id is reserved for "invalid / unregistered" so a freshly
-// zero-initialised `lore_revision_tree_t` in C behaves like a null
-// handle.
+// Look up the corresponding [`RevisionTreeInternal`] via [`lookup`] before
+// dispatch; never cast directly to or from raw pointers.
 typedef struct lore_revision_tree_t {
+  // Registry key; `0` is the reserved invalid/unregistered sentinel (zero-init = null handle)
   uint64_t handle_id;
 } lore_revision_tree_t;
 #define LORE_REVISION_TREE_INVALID (lore_revision_tree_t){ .handle_id = 0 }
 
 // Arguments for `lore_revision_tree_load`.
 typedef struct lore_revision_tree_load_args_t {
+  // Open storage handle the revision tree is loaded against
   struct lore_store_t store;
+  // Repository partition the loaded revision belongs to
   struct lore_partition_t repository;
+  // Revision to open; `0` opens an empty tree for an initial commit
   struct lore_hash_t revision_hash;
 } lore_revision_tree_load_args_t;
 
 // Arguments for `lore_revision_tree_close`.
 typedef struct lore_revision_tree_close_args_t {
+  // Per-call correlation id echoed back in events
   uint64_t id;
+  // Revision-tree handle to release
   struct lore_revision_tree_t handle;
 } lore_revision_tree_close_args_t;
 
 // Arguments for `lore_revision_tree_resolve_path`.
 typedef struct lore_revision_tree_resolve_path_args_t {
+  // Per-call correlation id echoed back in events
   uint64_t id;
+  // Loaded revision-tree handle to resolve against
   struct lore_revision_tree_t handle;
+  // UTF-8 path relative to the tree root; empty resolves to the root node
   struct lore_string_t path;
 } lore_revision_tree_resolve_path_args_t;
 
 // Arguments for `lore_revision_tree_list_children`.
 typedef struct lore_revision_tree_list_children_args_t {
+  // Per-call correlation id echoed back in events
   uint64_t id;
+  // Loaded revision-tree handle to read from
   struct lore_revision_tree_t handle;
+  // Directory node whose children are streamed
   lore_node_id_t parent_node_id;
 } lore_revision_tree_list_children_args_t;
 
 // Arguments for `lore_revision_tree_node_info`.
 typedef struct lore_revision_tree_node_info_args_t {
+  // Per-call correlation id echoed back in events
   uint64_t id;
+  // Loaded revision-tree handle to read from
   struct lore_revision_tree_t handle;
+  // Node whose record is fetched; the root id also yields `root_info`
   lore_node_id_t node_id;
 } lore_revision_tree_node_info_args_t;
 
 // Arguments for `lore_revision_tree_node_path`.
 typedef struct lore_revision_tree_node_path_args_t {
+  // Per-call correlation id echoed back in events
   uint64_t id;
+  // Loaded revision-tree handle to read from
   struct lore_revision_tree_t handle;
+  // Node whose full UTF-8 path is reconstructed by walking parents
   lore_node_id_t node_id;
 } lore_revision_tree_node_path_args_t;
 
 // Arguments for `lore_revision_tree_add`.
 typedef struct lore_revision_tree_add_args_t {
+  // Per-call correlation id echoed back in events
   uint64_t id;
+  // Loaded revision-tree handle to mutate
   struct lore_revision_tree_t handle;
+  // Parent node the new child is added under
   lore_node_id_t parent_node_id;
+  // UTF-8 name of the new child within its parent
   struct lore_string_t name;
+  // `NodeKind` encoding: FILE=1, DIRECTORY=2, LINK=3
   uint32_t kind;
+  // POSIX permission bits for the new node
   uint16_t mode;
+  // Content size in bytes (leaf nodes)
   uint64_t size;
+  // Content address `(hash, file_id context)` of the new node
   struct lore_address_t address;
 } lore_revision_tree_add_args_t;
 
 // Arguments for `lore_revision_tree_delete`.
 typedef struct lore_revision_tree_delete_args_t {
+  // Per-call correlation id echoed back in events
   uint64_t id;
+  // Loaded revision-tree handle to mutate
   struct lore_revision_tree_t handle;
+  // Subtree root to mark deleted, including its transitive children
   lore_node_id_t node_id;
 } lore_revision_tree_delete_args_t;
 
 // Arguments for `lore_revision_tree_modify`.
 typedef struct lore_revision_tree_modify_args_t {
+  // Per-call correlation id echoed back in events
   uint64_t id;
+  // Loaded revision-tree handle to mutate
   struct lore_revision_tree_t handle;
+  // Leaf node to update; non-leaf targets are rejected
   lore_node_id_t node_id;
+  // New POSIX permission bits
   uint16_t mode;
+  // New content size in bytes
   uint64_t size;
+  // New content address; the existing `file_id` context is preserved
   struct lore_address_t address;
 } lore_revision_tree_modify_args_t;
 
 // Arguments for `lore_revision_tree_move`.
 typedef struct lore_revision_tree_move_args_t {
+  // Per-call correlation id echoed back in events
   uint64_t id;
+  // Loaded revision-tree handle to mutate
   struct lore_revision_tree_t handle;
+  // Node to move; its `file_id` is preserved across the move
   lore_node_id_t node_id;
+  // Parent node the moved node is reparented under
   lore_node_id_t destination_parent_id;
+  // UTF-8 name the moved node takes at the destination
   struct lore_string_t dst_name;
 } lore_revision_tree_move_args_t;
 
 // Arguments for `lore_revision_tree_metadata_set`.
 typedef struct lore_revision_tree_metadata_set_args_t {
+  // Per-call correlation id echoed back in events
   uint64_t id;
+  // Loaded revision-tree handle to mutate
   struct lore_revision_tree_t handle;
+  // Metadata key; re-setting it overwrites the pending value
   struct lore_string_t key;
+  // Value stored under the key
   struct lore_string_t value;
+  // Value encoding, matching `LoreRevisionMetadataSetArgs::formats`
   uint32_t format;
 } lore_revision_tree_metadata_set_args_t;
 
 // Arguments for `lore_revision_tree_metadata_get`.
 typedef struct lore_revision_tree_metadata_get_args_t {
+  // Per-call correlation id echoed back in events
   uint64_t id;
+  // Loaded revision-tree handle to read from
   struct lore_revision_tree_t handle;
+  // Metadata key to read; pending edits take precedence over the revision
   struct lore_string_t key;
 } lore_revision_tree_metadata_get_args_t;
 
 // Tuneables for `lore_revision_tree_commit`.
-//
-// `remote_write` is `0` or `1`. The flag is encoded as `u8` rather than
-// `bool` because `bool` is not `#[repr(C)]`-stable across FFI; this
-// matches the existing storage API convention
-// (`LoreStoragePutItem::remote_write`).
 typedef struct lore_revision_tree_commit_options_t {
+  // Also upload the new revision to remote (local-only by default)
   uint8_t remote_write;
 } lore_revision_tree_commit_options_t;
 
 // Arguments for `lore_revision_tree_commit`.
 typedef struct lore_revision_tree_commit_args_t {
+  // Per-call correlation id echoed back in events
   uint64_t id;
+  // Loaded revision-tree handle to freeze and commit
   struct lore_revision_tree_t handle;
+  // Branch whose tip is atomically advanced to the new revision
   lore_branch_id_t branch;
+  // Commit tuneables (local-only vs remote-uploading)
   struct lore_revision_tree_commit_options_t options;
 } lore_revision_tree_commit_args_t;
 

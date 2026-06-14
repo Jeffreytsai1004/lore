@@ -53,16 +53,16 @@ use crate::storage::store::StoreInternal;
 #[repr(C)]
 #[derive(Copy, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct LoreStorageGetItem {
+    /// Caller-chosen id echoed back in every event for this item
     pub id: u64,
+    /// Partition to read from; the zero/default partition rejects with `INVALID_ARGUMENTS`
     pub partition: Partition,
+    /// Content address to read; `hash == Hash::default()` short-circuits to an empty buffer
     pub address: Address,
-    /// Streaming mode — `0` = single reassembled buffer; `1` = one
-    /// `GET_DATA` per leaf fragment with offsets.
+    /// Stream one `GET_DATA` per leaf fragment instead of a single reassembled buffer
     pub streaming: u8,
-    /// `0` (default): a remote-fetched payload is delivered to the caller without populating
-    /// the local immutable store, unless the producer flagged the fragment with
-    /// `PayloadLocalCachePriority`. `1`: force the read pipeline's `with_cache()` so this
-    /// fetch's bytes are written back to the local store regardless of the producer hint.
+    /// Cache fetched bytes back to the local store even without the producer's
+    /// `PayloadLocalCachePriority` hint
     pub local_cache: u8,
 }
 
@@ -81,7 +81,9 @@ impl core::fmt::Debug for LoreStorageGetItem {
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize, LoreArgs)]
 #[handler(get_local)]
 pub struct LoreStorageGetArgs {
+    /// Open storage handle
     pub handle: LoreStore,
+    /// Addresses to read; each runs independently and emits its own event sequence
     pub items: LoreArray<LoreStorageGetItem>,
 }
 

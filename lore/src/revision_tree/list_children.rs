@@ -13,7 +13,10 @@ use crate::revision_tree::handle::LoreRevisionTree;
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 pub struct LoreRevisionTreeListChildrenArgs {
+    /// Per-call correlation id echoed back in events
     pub id: u64,
+    /// Loaded revision-tree handle to read from
     pub handle: LoreRevisionTree,
+    /// Directory node whose children are streamed
     pub parent_node_id: NodeID,
 }

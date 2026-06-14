@@ -53,13 +53,16 @@ use crate::storage::store::StoreInternal;
 #[repr(C)]
 #[derive(Clone, PartialEq, Default, Deserialize, Serialize)]
 pub struct LoreStorageGetFileItem {
+    /// Caller-chosen id echoed back in `GET_ITEM_COMPLETE`
     pub id: u64,
+    /// Partition to read from; the zero/default partition rejects with `INVALID_ARGUMENTS`
     pub partition: Partition,
+    /// Content address to read; `hash == Hash::default()` truncates `path` to zero bytes
     pub address: Address,
+    /// Destination path; empty rejects with `INVALID_ARGUMENTS`. Multi-fragment writes
+    /// stage via `<path>.loretmp` then atomically rename
     pub path: LoreString,
-    /// Same semantics as `LoreStorageGetItem::local_cache` — `1` forces a local-store cache
-    /// populate of the remote-fetched fragments in addition to writing the bytes to `path`.
-    /// `0` (default) leaves caching to the producer-side `PayloadLocalCachePriority` hint.
+    /// Cache fetched fragments back to the local store, not just write them to `path`
     pub local_cache: u8,
 }
 
@@ -77,7 +80,9 @@ impl core::fmt::Debug for LoreStorageGetFileItem {
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize, LoreArgs)]
 #[handler(get_file_local)]
 pub struct LoreStorageGetFileArgs {
+    /// Open storage handle
     pub handle: LoreStore,
+    /// Addresses and destination paths; each runs independently
     pub items: LoreArray<LoreStorageGetFileItem>,
 }
 

@@ -23,14 +23,15 @@ use crate::interface::LoreString;
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize, LoreArgs)]
 #[handler(create_local)]
+/// Arguments for creating a new shared store.
 pub struct LoreSharedStoreCreateArgs {
-    // Remote URL backing the store
+    /// Remote URL backing the store
     pub remote_url: LoreString,
 
-    // Path to where the store will be created, empty string means to use the default location
+    /// Path where the store will be created; empty string uses the default location
     pub path: LoreString,
 
-    // Set this as the default shared store in the global config file
+    /// Set this as the default shared store in the global config
     pub make_default: u8,
 }
 
@@ -97,6 +98,7 @@ async fn create_local(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize, LoreArgs)]
 #[handler(info_local)]
+/// Arguments for querying the configured default shared store (no parameters).
 pub struct LoreSharedStoreInfoArgs {}
 
 /// Returns information about the configured default shared store
@@ -169,8 +171,9 @@ async fn info_local(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize, LoreArgs)]
 #[handler(set_use_automatically_local)]
+/// Arguments for setting whether to automatically use the shared store.
 pub struct LoreSharedStoreSetUseAutomaticallyArgs {
-    /// Whether to automatically use the shared store
+    /// Automatically use the shared store
     pub enabled: u8,
 }
 

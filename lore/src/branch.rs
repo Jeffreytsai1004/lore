@@ -37,12 +37,13 @@ use crate::interface::LoreString;
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(create_local)]
+/// Arguments for creating a new branch with the given name and category.
 pub struct LoreBranchCreateArgs {
-    // Name of the branch
+    /// Name of the branch
     pub branch: LoreString,
-    // Category of the branch
+    /// Category of the branch
     pub category: LoreString,
-    // Optional explicit branch ID (hex-encoded 16-byte context)
+    /// Optional explicit branch ID (hex-encoded 16-byte context)
     pub id: LoreString,
 }
 
@@ -107,8 +108,9 @@ async fn create_local(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(info_local)]
+/// Arguments for retrieving branch metadata (name, id, category, protection status).
 pub struct LoreBranchInfoArgs {
-    // Name of the branch
+    /// Name of the branch
     pub branch: LoreString,
 }
 
@@ -156,6 +158,7 @@ async fn info_local(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(diff_local)]
+/// Arguments for diffing two branches, reporting changed and conflicting files.
 pub struct LoreBranchDiffArgs {
     /// Source branch name
     pub source: LoreString,
@@ -222,6 +225,7 @@ async fn diff_local(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(list_local)]
+/// Arguments for listing all branches in the repository.
 pub struct LoreBranchListArgs {
     /// Include archived local branches in listing
     pub archived: u8,
@@ -276,6 +280,7 @@ async fn list_local(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(merge_start_local)]
+/// Arguments for merging a source branch into the current branch.
 pub struct LoreBranchMergeStartArgs {
     /// Name of the source branch to merge into the current branch
     pub branch: LoreString,
@@ -369,6 +374,7 @@ async fn merge_start_local(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(merge_abort_local)]
+/// Arguments for aborting an in-progress branch merge.
 pub struct LoreBranchMergeAbortArgs {
     /// Optional link path for link-scoped abort
     pub link: LoreString,
@@ -435,8 +441,9 @@ async fn merge_abort_local(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(merge_unresolve_local)]
+/// Arguments for marking resolved merge paths as unresolved again.
 pub struct LoreBranchMergeUnresolveArgs {
-    /// An array of paths
+    /// Paths to mark unresolved
     pub paths: LoreArray<LoreString>,
 }
 
@@ -489,16 +496,17 @@ async fn merge_unresolve_local(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(merge_into_local)]
+/// Arguments for merging the current branch's staged changes into a target branch.
 pub struct LoreBranchMergeIntoArgs {
-    // Name of the target branch to merge into
+    /// Name of the target branch to merge into
     pub branch: LoreString,
-    // ID of the target branch to merge into
+    /// ID of the target branch to merge into
     pub branch_id: Context,
-    // Message
+    /// Commit message for the auto-commit
     pub message: LoreString,
-    // Optional link path for link-scoped merge into
+    /// Optional link path for link-scoped merge into
     pub link: LoreString,
-    // Merge only the main repository, skipping all linked repositories
+    /// Merge only the main repository, skipping all linked repositories
     pub ignore_links: u8,
 }
 
@@ -580,8 +588,9 @@ async fn merge_into_local(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(merge_restart_local)]
+/// Arguments for re-applying merge conflict resolution for the given paths.
 pub struct LoreBranchMergeRestartArgs {
-    /// An array of paths
+    /// Paths to re-materialize
     pub paths: LoreArray<LoreString>,
 }
 
@@ -635,8 +644,9 @@ async fn merge_restart_local(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(merge_resolve_local)]
+/// Arguments for marking conflicted paths as resolved.
 pub struct LoreBranchMergeResolveArgs {
-    /// An array of paths
+    /// Paths to mark resolved
     pub paths: LoreArray<LoreString>,
 }
 
@@ -689,8 +699,9 @@ async fn merge_resolve_local(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(merge_resolve_mine_local)]
+/// Arguments for resolving conflicts by accepting the local ("mine") version.
 pub struct LoreBranchMergeResolveMineArgs {
-    /// An array of paths
+    /// Paths to resolve as "mine"
     pub paths: LoreArray<LoreString>,
 }
 
@@ -743,8 +754,9 @@ async fn merge_resolve_mine_local(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(merge_resolve_theirs_local)]
+/// Arguments for resolving conflicts by accepting the incoming ("theirs") version.
 pub struct LoreBranchMergeResolveTheirsArgs {
-    /// An array of paths
+    /// Paths to resolve as "theirs"
     pub paths: LoreArray<LoreString>,
 }
 
@@ -797,6 +809,7 @@ async fn merge_resolve_theirs_local(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(push_local)]
+/// Arguments for pushing a branch and its revisions to the remote.
 pub struct LoreBranchPushArgs {
     /// Optional branch to push, current branch if not given
     pub branch: LoreString,
@@ -881,6 +894,7 @@ async fn push_impl(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(switch_local)]
+/// Arguments for switching the working directory to a different branch or revision.
 pub struct LoreBranchSwitchArgs {
     /// Name of the branch
     pub branch: LoreString,
@@ -959,8 +973,9 @@ async fn switch_local(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(protect_local)]
+/// Arguments for applying write protection to a branch.
 pub struct LoreBranchProtectArgs {
-    // Name of the branch
+    /// Name of the branch
     pub branch: LoreString,
 }
 
@@ -1014,8 +1029,9 @@ async fn protect_local(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(unprotect_local)]
+/// Arguments for removing write protection from a branch.
 pub struct LoreBranchUnprotectArgs {
-    // Name of the branch
+    /// Name of the branch
     pub branch: LoreString,
 }
 
@@ -1069,8 +1085,9 @@ async fn unprotect_local(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(archive_local)]
+/// Arguments for archiving a branch locally and (unless local mode) on the remote.
 pub struct LoreBranchArchiveArgs {
-    // Name of the branch
+    /// Name of the branch
     pub branch: LoreString,
 }
 
@@ -1175,10 +1192,11 @@ async fn archive_impl(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(reset_local)]
+/// Arguments for resetting a branch's local LATEST pointer to a specific revision.
 pub struct LoreBranchResetArgs {
-    // Revision to reset the local LATEST pointer to
+    /// Revision to reset the local LATEST pointer to
     pub revision: LoreString,
-    // Branch to reset, current branch if empty
+    /// Branch to reset, current branch if empty
     pub branch: LoreString,
 }
 
@@ -1241,8 +1259,11 @@ async fn reset_impl(
 
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Arguments for listing a branch's LATEST revision history.
 pub struct LoreBranchLatestListArgs {
+    /// Branch to list, current branch if empty
     pub branch: LoreString,
+    /// Maximum entries to return (`0` uses the default of 30)
     pub limit: u32,
 }
 
@@ -1278,6 +1299,7 @@ async fn latest_list_impl(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, LoreArgs)]
 #[handler(metadata_get_local)]
+/// Arguments for retrieving branch metadata (one key or all).
 pub struct LoreBranchMetadataGetArgs {
     /// Branch name or identifier
     pub branch: LoreString,
@@ -1335,14 +1357,15 @@ async fn metadata_get_local(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, LoreArgs)]
 #[handler(metadata_set_local)]
+/// Arguments for setting one or more key-value pairs on branch metadata.
 pub struct LoreBranchMetadataSetArgs {
     /// Branch name or identifier
     pub branch: LoreString,
-    /// An array of keys
+    /// Metadata keys to set (parallel with `values`/`formats`)
     pub keys: LoreArray<LoreString>,
-    /// An array of values
+    /// Values to set, one per key (decoded per the matching `formats` entry)
     pub values: LoreArray<LoreString>,
-    /// An array of formats
+    /// Value type for each key, one per key
     pub formats: LoreArray<LoreMetadataType>,
 }
 
@@ -1416,6 +1439,7 @@ async fn metadata_set_impl(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, LoreArgs)]
 #[handler(metadata_clear_local)]
+/// Arguments for removing keys from branch metadata.
 pub struct LoreBranchMetadataClearArgs {
     /// Branch name or identifier
     pub branch: LoreString,

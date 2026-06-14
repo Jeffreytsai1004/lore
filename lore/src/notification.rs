@@ -14,6 +14,7 @@ use crate::interface::LoreEventCallback;
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(subscribe_local)]
+/// Arguments for subscribing to repository notifications (no parameters).
 pub struct LoreNotificationSubscribeArgs {}
 
 /// Subscribe to repository notifications, delivering push events to the callback until a corresponding unsubscribe call.
@@ -52,6 +53,7 @@ pub async fn subscribe(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(unsubscribe_local)]
+/// Arguments for unsubscribing from repository notifications (no parameters).
 pub struct LoreNotificationUnsubscribeArgs {}
 
 /// Unsubscribe from repository notifications, stopping the delivery of push events to the callback.

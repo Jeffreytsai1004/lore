@@ -43,6 +43,7 @@ use crate::util::convert_user_paths;
 use crate::util::log_command_done;
 use crate::util::log_command_info;
 
+/// Arguments for cloning a remote repository to the local path.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, LoreArgs)]
 #[handler(clone_local)]
@@ -233,11 +234,12 @@ async fn clone_impl(
     .await
 }
 
+/// Arguments for retrieving metadata about a remote repository.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(info_local)]
 pub struct LoreRepositoryInfoArgs {
-    /// Repository URL
+    /// URL of the remote repository to query
     pub repository_url: LoreString,
 }
 
@@ -301,15 +303,16 @@ async fn info_local(
         .await
 }
 
+/// Arguments for dumping the internal state tree of the repository.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(dump_local)]
 pub struct LoreRepositoryDumpArgs {
-    // Optional revision
+    /// Revision to dump; empty string uses the current revision
     pub revision: LoreString,
-    // Optional path within the repository to start dumping from
+    /// Repository-relative path to start dumping from; empty dumps the root
     pub path: LoreString,
-    // Max depth
+    /// Maximum tree traversal depth
     pub max_depth: usize,
 }
 
@@ -383,6 +386,7 @@ async fn dump_impl(
     lore_revision::repository::dump::dump(repository, revision, path, args.max_depth).await
 }
 
+/// Arguments for creating a new repository at the specified URL.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(create_local)]
@@ -486,10 +490,11 @@ async fn create_impl(args: &LoreRepositoryCreateArgs) -> Result<(), CreateError>
     lore_revision::repository::create::create(repository_url, repository_path, options).await
 }
 
+/// Optional creator and creation-time metadata to record on a new repository.
 pub struct LoreRepositoryCreateMetadata {
-    /// Creator
+    /// Identity to attribute repository creation to
     pub creator: LoreString,
-    /// Created
+    /// Creation timestamp (milliseconds since the Unix epoch)
     pub created: u64,
 }
 
@@ -564,10 +569,11 @@ async fn create_with_metadata_impl(
     .await
 }
 
+/// Arguments for deleting a remote repository.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LoreRepositoryDeleteArgs {
-    /// URL to the repository
+    /// URL of the remote repository to delete
     pub repository_url: LoreString,
 }
 
@@ -605,6 +611,7 @@ pub async fn delete(
         .await
 }
 
+/// Arguments for releasing cached store references for the repository path.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(release_local)]
@@ -652,6 +659,7 @@ async fn release_local(
     .await
 }
 
+/// Arguments for waiting on outstanding asynchronous repository tasks.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(flush_local)]
@@ -695,6 +703,7 @@ async fn flush_local(
     .await
 }
 
+/// Arguments for running garbage collection on the local repository store.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(gc_local)]
@@ -741,11 +750,12 @@ async fn gc_local(
     .await
 }
 
+/// Arguments for listing all repositories available at a remote URL.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(list_local)]
 pub struct LoreRepositoryListArgs {
-    /// Remote URL
+    /// Remote URL to list repositories from
     pub url: LoreString,
 }
 
@@ -811,21 +821,22 @@ async fn list_local(
         .await
 }
 
+/// Arguments for reporting the working directory status.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(status_local)]
 pub struct LoreRepositoryStatusArgs {
-    /// Include staged or not
+    /// Include staged state in the report
     pub staged: u8,
     /// Reconcile against the filesystem and refresh dirty tracking.
     ///
-    /// When `0` (default), status reports the currently tracked state: the
+    /// By default, status reports the currently tracked state: the
     /// staged revision (if any) plus any files and directories already
     /// marked dirty. No filesystem reads are performed beyond the existing
     /// dirty flags — clean or unmarked files on disk are not inspected even
     /// if they differ from the current revision.
     ///
-    /// When `1`, the filesystem is walked under each requested path, every
+    /// When enabled, the filesystem is walked under each requested path, every
     /// file is reconciled against the current revision, and dirty flags are
     /// set or cleared accordingly. The refreshed flags are persisted in the
     /// staged state so subsequent operations (commit, stage, status) see an
@@ -833,23 +844,23 @@ pub struct LoreRepositoryStatusArgs {
     pub scan: u8,
     /// Verify dirty flags against the filesystem without a full scan.
     ///
-    /// When `1`, files already marked dirty are re-examined individually: a
+    /// When enabled, files already marked dirty are re-examined individually: a
     /// dirty file whose on-disk content matches its tracked node (same size,
     /// and same content when the modification time differs) has its dirty flag
     /// cleared and is omitted from the report, unless it is also staged.
     /// Structural dirty actions (add/move/copy/delete) are always reported.
     /// The refreshed flags are persisted in the staged state.
     pub check_dirty: u8,
-    /// Reset the current tracked state before computing current status
+    /// Reset the tracked state before computing status
     pub reset: u8,
-    /// Include sync point or not
+    /// Include the sync point in the report
     pub sync_point: u8,
-    /// Only emit revision info, skip all diffs
+    /// Only emit revision info, skipping all diffs
     pub revision_only: u8,
     /// Count directories and files (view-filtered) in the staged state if
     /// present, otherwise the current revision
     pub count: u8,
-    /// Optional path to limit status check to
+    /// Repository-relative paths to limit the status check to; empty checks all
     pub paths: LoreArray<LoreString>,
 }
 
@@ -965,13 +976,14 @@ async fn status_impl(
     lore_revision::repository::status::status(repository, paths, options).await
 }
 
+/// Arguments for verifying the integrity of the local repository state.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(verify_state_local)]
 pub struct LoreRepositoryVerifyStateArgs {
-    /// Optional path
+    /// Repository-relative path to verify; empty verifies the whole repository
     pub path: LoreString,
-    // Heal or not
+    /// Heal detected inconsistencies
     pub heal: u8,
 }
 
@@ -1040,15 +1052,16 @@ async fn verify_state_impl(
     lore_revision::repository::verify::verify(repository, path, args.heal != 0).await
 }
 
+/// Arguments for verifying a single fragment in the local store.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(verify_fragment_local)]
 pub struct LoreRepositoryVerifyFragmentArgs {
     /// Fragment hash to verify
     pub hash: LoreString,
-    /// Optional context to match
+    /// Optional context to match; empty matches any
     pub context: LoreString,
-    /// Heal flag for remote verification (0 = no heal, non-zero = heal)
+    /// Heal detected inconsistencies during remote verification
     pub heal: u8,
 }
 
@@ -1087,13 +1100,14 @@ async fn verify_fragment_impl(
     lore_revision::repository::verify::verify_fragment(repository, core_args).await
 }
 
+/// Arguments for querying the local immutable store by fragment address.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(store_immutable_query_local)]
 pub struct LoreRepositoryStoreImmutableQueryArgs {
-    /// Address to query
+    /// Fragment address to query
     pub address: LoreString,
-    /// Recurse and query subfragments
+    /// Recurse into and query subfragments
     pub recurse: u8,
 }
 
@@ -1147,11 +1161,12 @@ async fn store_immutable_query_local(
     .await
 }
 
+/// Arguments for retrieving repository metadata.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, LoreArgs)]
 #[handler(metadata_get_local)]
 pub struct LoreRepositoryMetadataGetArgs {
-    /// Metadata key (empty string lists all)
+    /// Metadata key to fetch; empty string lists all entries
     pub key: LoreString,
 }
 
@@ -1194,15 +1209,16 @@ async fn metadata_get_local(
     .await
 }
 
+/// Arguments for setting metadata key-value pairs on the current repository.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, LoreArgs)]
 #[handler(metadata_set_local)]
 pub struct LoreRepositoryMetadataSetArgs {
-    /// An array of keys
+    /// Metadata keys to set, positionally aligned with `values` and `formats`
     pub keys: LoreArray<LoreString>,
-    /// An array of values
+    /// Values to set, one per key, encoded per the matching `formats` entry
     pub values: LoreArray<LoreString>,
-    /// An array of formats
+    /// Value format/type for each key-value pair
     pub formats: LoreArray<LoreMetadataType>,
 }
 
@@ -1267,11 +1283,12 @@ async fn metadata_set_impl(
     lore_revision::metadata::repository::set(repository, &keys, &values, &formats).await
 }
 
+/// Arguments for removing metadata keys from the current repository.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, LoreArgs)]
 #[handler(metadata_clear_local)]
 pub struct LoreRepositoryMetadataClearArgs {
-    /// Keys to clear (empty array clears all user-defined keys)
+    /// Keys to clear; empty array clears all user-defined keys
     pub keys: LoreArray<LoreString>,
 }
 
@@ -1307,6 +1324,7 @@ async fn metadata_clear_local(
 
 // --- Instance management commands ---
 
+/// Arguments for listing the tracked instances of the repository.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(instance_list_local)]
@@ -1335,6 +1353,7 @@ async fn instance_list_local(
     .await
 }
 
+/// Arguments for pruning stale instances of the repository.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(instance_prune_local)]
@@ -1363,6 +1382,7 @@ async fn instance_prune_local(
     .await
 }
 
+/// Arguments for updating the recorded path of the current repository instance.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(update_path_local)]
@@ -1391,10 +1411,12 @@ async fn update_path_local(
     .await
 }
 
+/// Arguments for reading a value from the repository config.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(config_get_local)]
 pub struct LoreRepositoryConfigGetArgs {
+    /// Config key to read (`remote_url` or `identity`)
     pub key: LoreString,
 }
 

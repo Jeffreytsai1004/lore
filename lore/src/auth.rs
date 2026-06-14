@@ -43,11 +43,12 @@ impl EventError for AuthStoreError {
     }
 }
 
+/// Arguments for resolving user IDs to display names via the remote auth service.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(resolve_user_info_local)]
 pub struct LoreAuthUserInfoArgs {
-    /// User IDs to resolve
+    /// User IDs to resolve; empty resolves the current user locally
     pub user_ids: LoreArray<LoreString>,
 }
 
@@ -145,19 +146,19 @@ fn send_user_info(user_info: UserInfo) {
     .send();
 }
 
+/// Arguments for authenticating against a remote URL using a provided token.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(login_with_token_local)]
 pub struct LoreAuthLoginWithTokenArgs {
-    /// Remote URL
+    /// Remote URL; empty resolves from the repository config
     pub remote_url: LoreString,
     /// Authentication token
     pub token: LoreString,
     /// Token type
     pub token_type: LoreString,
-    /// Auth service URL with scheme (e.g. `ucs-auth://auth.example.com`).
-    /// When non-empty, used directly instead of resolving from the server's
-    /// environment endpoint. Required when no remote URL is available.
+    /// Auth service URL with scheme (e.g. `ucs-auth://auth.example.com`); used
+    /// directly when non-empty, required when no remote URL is available
     pub auth_url: LoreString,
 }
 
@@ -242,13 +243,14 @@ async fn login_with_token_impl(
     }
 }
 
+/// Arguments for authenticating interactively via browser-based login flow.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(login_interactive_local)]
 pub struct LoreAuthLoginInteractiveArgs {
-    /// Remote URL
+    /// Remote URL; empty resolves from the repository config
     pub remote_url: LoreString,
-    /// Avoid opening a browser for interactive login
+    /// Emit the login URL instead of opening a browser
     pub no_browser: u8,
 }
 
@@ -317,11 +319,12 @@ async fn login_interactive_local(
     status
 }
 
+/// Arguments for listing all stored authentication identities across endpoints.
 #[repr(C)]
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(list_local)]
 pub struct LoreAuthListArgs {
-    /// Include cached tokens in the output
+    /// Include the decrypted cached token in each identity
     pub with_token: u8,
 }
 
@@ -403,15 +406,16 @@ async fn list_local(
     status
 }
 
+/// Arguments for removing stored authentication and authorization tokens.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(logout_local)]
 pub struct LoreAuthLogoutArgs {
-    /// Auth service URL (empty to resolve from repository)
+    /// Auth service URL; empty resolves from the repository
     pub auth_url: LoreString,
-    /// Resource ID (empty to remove all tokens for the auth URL, e.g. "urc-{id}" for a specific authorization)
+    /// Resource ID (e.g. `urc-{id}`); empty removes all tokens for the auth URL
     pub resource: LoreString,
-    /// User identity to remove (empty to remove all identities)
+    /// User identity to remove; empty removes all identities
     pub user_id: LoreString,
 }
 
@@ -490,6 +494,7 @@ async fn logout_local(
     status
 }
 
+/// Arguments for clearing all stored authentication identities and tokens.
 #[repr(C)]
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(clear_local)]
@@ -546,15 +551,16 @@ async fn clear_local(
     status
 }
 
+/// Arguments for resolving user identities from locally stored JWT tokens.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(local_user_info_impl)]
 pub struct LoreAuthLocalUserInfoArgs {
-    /// Auth service remote URL
+    /// Auth service remote URL; empty resolves from the repository's remote environment
     pub auth_endpoint: LoreString,
-    /// User identities to resolve
+    /// User identities to resolve; empty resolves the current user
     pub user_ids: LoreArray<LoreString>,
-    /// Include cached tokens in the output
+    /// Emit cached token details for identities with a local token
     pub with_token: u8,
 }
 

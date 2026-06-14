@@ -28,6 +28,7 @@ use crate::storage::handle::LoreStore;
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize, LoreArgs)]
 #[handler(flush_local)]
 pub struct LoreStorageFlushArgs {
+    /// Open handle whose pending writes to flush
     pub handle: LoreStore,
 }
 

@@ -13,6 +13,8 @@ use crate::revision_tree::handle::LoreRevisionTree;
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 pub struct LoreRevisionTreeCloseArgs {
+    /// Per-call correlation id echoed back in events
     pub id: u64,
+    /// Revision-tree handle to release
     pub handle: LoreRevisionTree,
 }

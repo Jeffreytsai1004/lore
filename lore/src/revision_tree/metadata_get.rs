@@ -16,7 +16,10 @@ use crate::revision_tree::handle::LoreRevisionTree;
 #[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 pub struct LoreRevisionTreeMetadataGetArgs {
+    /// Per-call correlation id echoed back in events
     pub id: u64,
+    /// Loaded revision-tree handle to read from
     pub handle: LoreRevisionTree,
+    /// Metadata key to read; pending edits take precedence over the revision
     pub key: LoreString,
 }

@@ -19,16 +19,10 @@ use dashmap::DashMap;
 use crate::storage::store::StoreInternal;
 
 /// Opaque handle to an open content-addressed storage instance.
-///
-/// The wrapped `handle_id` is the registry key; library code MUST look up
-/// the corresponding [`StoreInternal`] through [`lookup`] before dispatch,
-/// and MUST NOT cast directly to or from raw pointers.
-///
-/// The `0` id is reserved for "invalid / unregistered" so a freshly
-/// zero-initialized `lore_store_t` in C behaves like a null handle.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct LoreStore {
+    /// Registry key; `0` is the reserved invalid/unregistered sentinel (zero-init = null handle)
     pub handle_id: u64,
 }
 

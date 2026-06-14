@@ -51,56 +51,31 @@ use crate::storage::store::BoundFlags;
 use crate::storage::store::StoreInternal;
 
 /// Remote endpoint configuration for a storage handle.
-///
-/// `remote_url` is the gRPC endpoint of a peer storage service. The handle's `globals.identity`
-/// from the open call is used for authentication.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
 pub struct LoreStorageRemoteConfig {
+    /// gRPC endpoint of the peer storage service; authenticated with the open call's `globals.identity`
     pub remote_url: LoreString,
 }
 
 /// Arguments for `lore_storage_open`.
-///
-/// `repository_path` + `in_memory` select the mode:
-/// - `repository_path` non-empty, `in_memory == 0` → disk-backed.
-/// - `repository_path` empty, `in_memory == 1` → in-memory.
-/// - Any other combination returns `LORE_ERROR_CODE_INVALID_ARGUMENTS`.
-///
-/// `has_remote_config != 0` activates `remote_config`. When unset, ops that would otherwise
-/// reach a remote (put with `remote_write=1`, get on local miss, copy server-side, upload)
-/// behave as local-only.
-///
-/// `cache_target_bytes` / `cache_target_fragments` are honored only when `globals.gc != 0`;
-/// the handle then spawns the immutable store's evictor (capacity-driven, fragment count) and
-/// compactor (size-driven, total bytes). A field of `0` falls back to the built-in default
-/// (1 GiB / 1 M fragments). When `globals.gc == 0` no background tasks spawn and these fields
-/// are ignored.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize, LoreArgs)]
 #[handler(open_local)]
 pub struct LoreStorageOpenArgs {
-    /// Path to an existing lore repository. Must be empty when
-    /// `in_memory == 1`.
+    /// Path to an existing lore repository; must be empty when `in_memory` is set
     pub repository_path: LoreString,
-    /// Set to 1 to open a fresh in-memory store; `repository_path` must
-    /// be empty in that case.
+    /// Open a fresh in-memory store; `repository_path` must then be empty
     pub in_memory: u8,
-    /// Remote endpoint binding for ops that consult a peer storage service. Only honored when
-    /// `has_remote_config != 0`.
+    /// Remote endpoint binding for ops that consult a peer; honored only when `has_remote_config` is set
     pub remote_config: LoreStorageRemoteConfig,
-    /// Set to 1 to activate `remote_config`; 0 leaves the handle with no remote.
+    /// Activate `remote_config`; otherwise the handle has no remote
     pub has_remote_config: u8,
-    /// Soft cap on the total bytes held in the immutable store; the compactor reduces below
-    /// this when running. Only honored when `globals.gc != 0`. `0` selects the built-in
-    /// default. Disk-backed handles share the underlying immutable-store `Arc` keyed by
-    /// canonical path: the first open of a given path wins, and subsequent opens of the same
-    /// path inherit the first call's `cache_target_*` values silently — this field has no
-    /// effect on those subsequent opens.
+    /// Soft cap on total immutable-store bytes (compactor target); honored only when `globals.gc`
+    /// is set. `0` selects the default; shared disk backends inherit the first opener's value
     pub cache_target_bytes: u64,
-    /// Soft cap on the total fragment count in the immutable store; the evictor reduces below
-    /// this when running. Only honored when `globals.gc != 0`. `0` selects the built-in
-    /// default. See `cache_target_bytes` regarding first-open-wins for shared backends.
+    /// Soft cap on immutable-store fragment count (evictor target); honored only when `globals.gc`
+    /// is set. `0` selects the default
     pub cache_target_fragments: u64,
 }
 

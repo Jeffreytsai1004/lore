@@ -40,6 +40,7 @@ use crate::call::repository_call_write;
 use crate::call_delegation::dispatch_call;
 use crate::util::convert_user_paths;
 
+/// Arguments for retrieving file information (size, hash, staged status).
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(info_local)]
@@ -108,6 +109,7 @@ async fn info_impl(
     file::info::info(repository, paths, options).await
 }
 
+/// Arguments for diffing files between two revisions.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(diff_local)]
@@ -118,13 +120,13 @@ pub struct LoreFileDiffArgs {
     pub source_revision: LoreString,
     /// Target revision
     pub target_revision: LoreString,
-    /// If non-zero, produce three-way merge output with conflict markers
+    /// Produce three-way merge output with conflict markers
     pub diff3: u8,
     /// Number of unchanged context lines per unified-diff hunk
     pub context_lines: u32,
-    /// When non-zero, lines that differ only in trailing whitespace are treated as equal
+    /// Treat lines that differ only in trailing whitespace as equal
     pub ignore_whitespace_eol: u8,
-    /// When non-zero, runs of internal whitespace are collapsed to a single space for comparison
+    /// Collapse runs of internal whitespace to a single space for comparison
     pub ignore_whitespace_inline: u8,
 }
 
@@ -190,6 +192,7 @@ async fn diff_impl(
     .await
 }
 
+/// Arguments for clearing all metadata associated with a file.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(metadata_clear_local)]
@@ -243,6 +246,7 @@ async fn metadata_clear_local(
     .await
 }
 
+/// Arguments for retrieving a single metadata value for a file by key and revision.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(metadata_get_local)]
@@ -305,6 +309,7 @@ async fn metadata_get_local(
     .await
 }
 
+/// Arguments for listing all metadata key/value pairs for a file at a revision.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(metadata_list_local)]
@@ -360,6 +365,7 @@ async fn metadata_list_local(
     .await
 }
 
+/// Arguments for setting metadata key/value pairs on one or more files.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(metadata_set_local)]
@@ -467,6 +473,7 @@ async fn metadata_set_impl(
     .await
 }
 
+/// Arguments for staging one or more files for the next commit.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(stage_local)]
@@ -475,15 +482,7 @@ pub struct LoreFileStageArgs {
     pub paths: LoreArray<LoreString>,
     /// Case change handling, 0 = error, 1 = update filesystem (keep), 2 = update repository (rename)
     pub case_change: u32,
-    /// Force a recursive filesystem scan for directory paths.
-    ///
-    /// Has no effect on individual file paths — those are always reconciled
-    /// against the filesystem regardless of this flag.
-    ///
-    /// When `0` (default), directory paths stage only the files and child
-    /// directories currently marked dirty in the repository state. When `1`,
-    /// directory paths are walked recursively on the filesystem and every
-    /// file is reconciled, ignoring the dirty flags.
+    /// Force a recursive filesystem scan of directory paths (no effect on file paths)
     pub scan: u8,
 }
 
@@ -563,6 +562,7 @@ async fn stage_local(
     .await
 }
 
+/// Arguments for staging one or more files as merge resolutions.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(stage_merge_local)]
@@ -627,6 +627,7 @@ async fn stage_merge_local(
     .await
 }
 
+/// Arguments for staging a file move from one path to another.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(stage_move_local)]
@@ -697,6 +698,7 @@ async fn stage_move_local(
 
 // ---- Dirty API ----
 
+/// Arguments for marking files dirty in the staged state (add/modify/delete inferred from filesystem).
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(dirty_local)]
@@ -728,6 +730,7 @@ async fn dirty_local(
     .await
 }
 
+/// Arguments for marking a file dirty-moved (relocates the staged node, no filesystem checks).
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(dirty_move_local)]
@@ -765,6 +768,7 @@ async fn dirty_move_local(
     .await
 }
 
+/// Arguments for marking a file dirty-copied (creates a new staged destination node, no filesystem checks).
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(dirty_copy_local)]
@@ -804,6 +808,7 @@ async fn dirty_copy_local(
 
 // ---- Unstage API ----
 
+/// Arguments for removing one or more files from the staged changeset.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(unstage_local)]
@@ -862,6 +867,7 @@ async fn unstage_local(
     .await
 }
 
+/// Arguments for resetting files to a revision, optionally purging untracked files.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(reset_local)]
@@ -930,13 +936,14 @@ async fn reset_local(
     .await
 }
 
+/// Arguments for resetting files to the last merged revision on a branch.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(reset_to_last_merged_local)]
 pub struct LoreFileResetToLastMergedArgs {
     /// Pointer to an array of paths
     pub paths: LoreArray<LoreString>,
-    /// Branch
+    /// Branch whose last merged revision to reset to
     pub branch: LoreString,
     /// Purge untracked files
     pub purge: u8,
@@ -997,17 +1004,18 @@ async fn reset_to_last_merged_local(
     .await
 }
 
+/// Arguments for writing a file to a destination by path/revision or by address.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(write_local)]
 pub struct LoreFileWriteArgs {
-    /// Address of data to write
+    /// Address of data to write; takes precedence over `path` when non-empty
     pub address: LoreString,
-    /// Path to a file
+    /// Repository path to the file; used when `address` is empty
     pub path: LoreString,
-    /// Revision of file to write
+    /// Revision of the file to write (used with `path`)
     pub revision: LoreString,
-    /// Output path of file
+    /// Destination filesystem path to write to
     pub output: LoreString,
 }
 
@@ -1107,13 +1115,14 @@ async fn write_impl(
     Ok(())
 }
 
+/// Arguments for permanently removing a file or address from repository history.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(obliterate_local)]
 pub struct LoreFileObliterateArgs {
-    /// Address of data to obliterate
+    /// Address of data to obliterate; takes precedence over `path` when non-empty
     pub address: LoreString,
-    /// Path to a file to obliterate
+    /// Repository path to obliterate; used when `address` is empty
     pub path: LoreString,
 }
 
@@ -1182,13 +1191,14 @@ async fn obliterate_impl(
     Ok(())
 }
 
+/// Arguments for dumping the binary content of a file by path or address.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(dump_local)]
 pub struct LoreFileDumpArgs {
-    /// Address of data to dump
+    /// Address of data to dump; takes precedence over `path` when non-empty
     pub address: LoreString,
-    /// Or a path to a file
+    /// Repository path to dump; used when `address` is empty
     pub path: LoreString,
 }
 
@@ -1246,6 +1256,7 @@ async fn dump_impl(
     Ok(())
 }
 
+/// Arguments for computing the hash and size of one or more files.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(hash_local)]
@@ -1300,16 +1311,17 @@ async fn hash_impl(
     Ok(())
 }
 
+/// Arguments for retrieving the revision history of a specific file.
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(history_local)]
 pub struct LoreFileHistoryArgs {
     /// A path to a file
     pub path: LoreString,
-    /// Optional revision specifier
+    /// Optional revision specifier to start from
     pub revision: LoreString,
 
-    /// Show revisions on specific branch
+    /// Restrict history to revisions on this branch
     pub branch: LoreString,
 
     /// Number of revisions to list

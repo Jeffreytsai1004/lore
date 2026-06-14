@@ -17,7 +17,10 @@ use crate::storage::handle::LoreStore;
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 pub struct LoreRevisionTreeLoadArgs {
+    /// Open storage handle the revision tree is loaded against
     pub store: LoreStore,
+    /// Repository partition the loaded revision belongs to
     pub repository: Partition,
+    /// Revision to open; `0` opens an empty tree for an initial commit
     pub revision_hash: Hash,
 }

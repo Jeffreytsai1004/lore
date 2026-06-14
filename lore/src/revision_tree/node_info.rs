@@ -15,7 +15,10 @@ use crate::revision_tree::handle::LoreRevisionTree;
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 pub struct LoreRevisionTreeNodeInfoArgs {
+    /// Per-call correlation id echoed back in events
     pub id: u64,
+    /// Loaded revision-tree handle to read from
     pub handle: LoreRevisionTree,
+    /// Node whose record is fetched; the root id also yields `root_info`
     pub node_id: NodeID,
 }

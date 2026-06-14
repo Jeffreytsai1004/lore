@@ -51,15 +51,20 @@ use crate::storage::store::StoreInternal;
 #[repr(C)]
 #[derive(Clone, PartialEq, Default, Deserialize, Serialize)]
 pub struct LoreStoragePutFileItem {
+    /// Caller-chosen id echoed back in `PUT_ITEM_COMPLETE`
     pub id: u64,
+    /// Target partition; the zero/default partition rejects with `INVALID_ARGUMENTS`
     pub partition: Partition,
+    /// Dedup tag stored alongside the content hash in the resulting address
     pub context: Context,
+    /// Source path; empty, missing, or non-file rejects with `INVALID_ARGUMENTS`; a zero-length
+    /// file maps to the zero-hash address
     pub path: LoreString,
+    /// Opt into remote upload — honored on the remote path, ignored local-only
     pub remote_write: u8,
-    /// Same semantics as `LoreStoragePutItem::local_cache` — tags the resulting fragment with
-    /// `PayloadLocalCachePriority` so future remote reads of this address always cache locally.
+    /// Tag the resulting fragment with `PayloadLocalCachePriority` so future remote reads always cache it locally
     pub local_cache: u8,
-    /// Same semantics as `LoreStoragePutItem::fixed_size_chunk`.
+    /// Leaf fragment size cap for large files; `0` lets `write_content` choose
     pub fixed_size_chunk: u64,
 }
 
@@ -79,7 +84,9 @@ impl core::fmt::Debug for LoreStoragePutFileItem {
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize, LoreArgs)]
 #[handler(put_file_local)]
 pub struct LoreStoragePutFileArgs {
+    /// Open storage handle
     pub handle: LoreStore,
+    /// Files to store; each runs independently and emits its own `PUT_ITEM_COMPLETE`
     pub items: LoreArray<LoreStoragePutFileItem>,
 }
 

@@ -64,22 +64,21 @@ use crate::storage::handle::LoreStore;
 use crate::storage::store::StoreInternal;
 
 /// One copy item — relocate content from `(source_partition, source_address)` to
-/// `(target_partition, source_address.hash, target_context)`. The hash is preserved across the
-/// copy (content-addressed), but partition and context can both differ from the source — same
-/// partition with a different `target_context` performs in-partition payload duplication
-/// without ever transferring the bytes.
+/// `(target_partition, source_address.hash, target_context)`, preserving the content hash.
 #[repr(C)]
 #[derive(Copy, Clone, Default, Debug, PartialEq, Deserialize, Serialize)]
 pub struct LoreStorageCopyItem {
+    /// Caller-chosen id echoed back in `COPY_ITEM_COMPLETE`
     pub id: u64,
+    /// Source partition; the zero/default partition rejects with `INVALID_ARGUMENTS`
     pub source_partition: Partition,
+    /// Destination partition; zero/default rejects, as does an exact `(source_partition, source
+    /// context)` match (no-op) — a different `target_context` enables in-partition duplication
     pub target_partition: Partition,
+    /// Source content address; its `hash` carries over to the destination address unchanged
     pub source_address: Address,
-    /// Destination context. The destination address is
-    /// `(target_partition, source_address.hash, target_context)`. May equal `source_address.context`
-    /// (a regular cross-partition copy preserving the dedup tag) or differ from it (re-tagging the
-    /// destination, including the same-partition different-context case used to duplicate a
-    /// payload reference under a new dedup tag).
+    /// Dedup tag for the destination address `(target_partition, source_address.hash,
+    /// target_context)`; may match the source tag or re-tag the payload
     pub target_context: Context,
 }
 
@@ -88,7 +87,9 @@ pub struct LoreStorageCopyItem {
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize, LoreArgs)]
 #[handler(copy_local)]
 pub struct LoreStorageCopyArgs {
+    /// Open storage handle
     pub handle: LoreStore,
+    /// Copy requests; each runs independently and emits its own `COPY_ITEM_COMPLETE`
     pub items: LoreArray<LoreStorageCopyItem>,
 }
 

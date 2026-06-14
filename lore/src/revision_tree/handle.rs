@@ -46,16 +46,12 @@ use crate::storage::store::StoreInternal;
 
 /// Opaque handle to an open memory-based revision tree instance.
 ///
-/// `handle_id` is the registry key; library code MUST look up the
-/// corresponding [`RevisionTreeInternal`] through [`lookup`] before
-/// dispatch and MUST NOT cast directly to or from raw pointers.
-///
-/// The `0` id is reserved for "invalid / unregistered" so a freshly
-/// zero-initialised `lore_revision_tree_t` in C behaves like a null
-/// handle.
+/// Look up the corresponding [`RevisionTreeInternal`] via [`lookup`] before
+/// dispatch; never cast directly to or from raw pointers.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct LoreRevisionTree {
+    /// Registry key; `0` is the reserved invalid/unregistered sentinel (zero-init = null handle)
     pub handle_id: u64,
 }
 

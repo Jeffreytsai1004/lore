@@ -60,6 +60,7 @@ pub(crate) fn spawn_flush_stores(
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize, LoreArgs)]
 #[handler(close_local)]
 pub struct LoreStorageCloseArgs {
+    /// Handle to release; from `LORE_EVENT_STORAGE_OPENED`
     pub handle: LoreStore,
 }
 

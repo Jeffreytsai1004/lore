@@ -43,8 +43,11 @@ use crate::storage::store::StoreInternal;
 #[repr(C)]
 #[derive(Copy, Clone, Default, Debug, PartialEq, Deserialize, Serialize)]
 pub struct LoreStorageObliterateItem {
+    /// Caller-chosen id echoed back in `OBLITERATE_ITEM_COMPLETE`
     pub id: u64,
+    /// Partition to delete from; the zero/default partition rejects with `INVALID_ARGUMENTS`
     pub partition: Partition,
+    /// Content address to delete; absence on a side is idempotent success for that side
     pub address: Address,
 }
 
@@ -53,7 +56,9 @@ pub struct LoreStorageObliterateItem {
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize, LoreArgs)]
 #[handler(obliterate_local)]
 pub struct LoreStorageObliterateArgs {
+    /// Open storage handle
     pub handle: LoreStore,
+    /// Addresses to delete; each runs independently and emits its own `OBLITERATE_ITEM_COMPLETE`
     pub items: LoreArray<LoreStorageObliterateItem>,
 }
 

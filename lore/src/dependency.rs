@@ -35,6 +35,7 @@ use crate::call_delegation::dispatch_call;
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(dependency_add_local)]
+/// Arguments for adding file dependencies, expanded from flat parallel arrays.
 pub struct LoreFileDependencyAddArgs {
     /// Source file paths that will have dependencies added.
     pub paths: LoreArray<LoreString>,
@@ -149,6 +150,7 @@ async fn dependency_add_impl(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(dependency_remove_local)]
+/// Arguments for removing file dependencies, expanded from flat parallel arrays.
 pub struct LoreFileDependencyRemoveArgs {
     /// Source file paths to remove dependencies from.
     pub paths: LoreArray<LoreString>,
@@ -257,6 +259,7 @@ async fn dependency_remove_impl(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, LoreArgs)]
 #[handler(dependency_list_local)]
+/// Arguments for listing file dependencies (or dependents) at a given revision.
 pub struct LoreFileDependencyListArgs {
     /// Files to query.
     pub paths: LoreArray<LoreString>,

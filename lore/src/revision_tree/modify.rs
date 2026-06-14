@@ -15,10 +15,16 @@ use crate::revision_tree::handle::LoreRevisionTree;
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 pub struct LoreRevisionTreeModifyArgs {
+    /// Per-call correlation id echoed back in events
     pub id: u64,
+    /// Loaded revision-tree handle to mutate
     pub handle: LoreRevisionTree,
+    /// Leaf node to update; non-leaf targets are rejected
     pub node_id: NodeID,
+    /// New POSIX permission bits
     pub mode: u16,
+    /// New content size in bytes
     pub size: u64,
+    /// New content address; the existing `file_id` context is preserved
     pub address: Address,
 }

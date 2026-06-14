@@ -50,8 +50,11 @@ use crate::storage::store::StoreInternal;
 #[repr(C)]
 #[derive(Copy, Clone, Default, Debug, PartialEq, Deserialize, Serialize)]
 pub struct LoreStorageUploadItem {
+    /// Caller-chosen id echoed back in `UPLOAD_ITEM_COMPLETE`
     pub id: u64,
+    /// Partition of the local content to push; the zero/default partition rejects with `INVALID_ARGUMENTS`
     pub partition: Partition,
+    /// Local content address to push; `hash == Hash::default()` is no-op success with `already_durable=1`
     pub address: Address,
 }
 
@@ -60,7 +63,9 @@ pub struct LoreStorageUploadItem {
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize, LoreArgs)]
 #[handler(upload_local)]
 pub struct LoreStorageUploadArgs {
+    /// Open storage handle; must have been opened with `remote_config`
     pub handle: LoreStore,
+    /// Addresses to push to remote; each runs independently and emits its own `UPLOAD_ITEM_COMPLETE`
     pub items: LoreArray<LoreStorageUploadItem>,
 }
 

@@ -11,9 +11,8 @@ use crate::interface::LoreEventCallback;
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, LoreArgs)]
 #[handler(start_local)]
-pub struct LoreServiceStartArgs {
-    // Start repository
-}
+/// Arguments for starting the Lore service process for the current repository (no parameters).
+pub struct LoreServiceStartArgs {}
 
 /// Start the Lore service process to manage the current repository.
 ///
@@ -57,8 +56,9 @@ async fn start_local(
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, LoreArgs)]
 #[handler(stop_local)]
+/// Arguments for stopping the Lore service process for the current or all repositories.
 pub struct LoreServiceStopArgs {
-    // Stop all repositories
+    /// Stop all repositories rather than just the current one
     pub all: u8,
 }
 

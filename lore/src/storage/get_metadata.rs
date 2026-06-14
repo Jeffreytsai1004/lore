@@ -53,8 +53,11 @@ use crate::storage::store::StoreInternal;
 #[repr(C)]
 #[derive(Copy, Clone, Default, Debug, PartialEq, Deserialize, Serialize)]
 pub struct LoreStorageGetMetadataItem {
+    /// Caller-chosen id echoed back in `GET_METADATA_ITEM_COMPLETE`
     pub id: u64,
+    /// Partition to look up; the zero/default partition rejects with `INVALID_ARGUMENTS`
     pub partition: Partition,
+    /// Content address to look up; `hash == Hash::default()` short-circuits to an empty fragment
     pub address: Address,
 }
 
@@ -63,7 +66,9 @@ pub struct LoreStorageGetMetadataItem {
 #[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize, LoreArgs)]
 #[handler(get_metadata_local)]
 pub struct LoreStorageGetMetadataArgs {
+    /// Open storage handle
     pub handle: LoreStore,
+    /// Addresses to look up; each runs independently and emits its own `GET_METADATA_ITEM_COMPLETE`
     pub items: LoreArray<LoreStorageGetMetadataItem>,
 }
 
