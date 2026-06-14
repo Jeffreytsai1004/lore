@@ -866,6 +866,82 @@ def test_stage_single_file_without_dirty(new_lore_repo):
     assert entry is not None, "file.txt should be staged via direct file path"
     assert entry["flagStaged"] is True
 
+
+@pytest.mark.smoke
+def test_stage_directory_recurses_dirty_added_subdirectory(new_lore_repo):
+    """`stage .` stages dirty-marked adds in a new subdirectory of a tracked dir.
+
+    A committed directory `some/` gains a brand-new subdirectory `some/test/`
+    with files, alongside a modified root file. After `status --scan` records
+    the changes, a plain `status` reports the nested adds and `stage .` (staging
+    the repository root from the dirty marks, no `--scan`) stages them along
+    with the modified root file, and the subsequent commit lands them in the
+    committed revision.
+    """
+    repo: Lore = new_lore_repo()
+
+    # Commit a baseline root file and a tracked `some/` directory.
+    with repo.open_file("root.txt", "w+") as f:
+        f.write("original root\n")
+    repo.make_dirs("some")
+    with repo.open_file("some/keep.txt", "w+") as f:
+        f.write("kept content\n")
+    repo.stage(scan=True, offline=True)
+    repo.commit(offline=True)
+
+    # Modify the root file and add a new subdirectory under the tracked
+    # `some/`, with the new files one level deeper still.
+    with repo.open_file("root.txt", "w+") as f:
+        f.write("modified root content\n")
+    repo.make_dirs("some/test")
+    with repo.open_file("some/test/alpha.txt", "w+") as f:
+        f.write("alpha content\n")
+    with repo.open_file("some/test/beta.txt", "w+") as f:
+        f.write("beta content\n")
+
+    nested = ("some/test/alpha.txt", "some/test/beta.txt")
+
+    # `status --scan` detects and persists all changes as dirty.
+    scanned = get_status_files(repo, scan=True)
+    assert find_status_entry(scanned, "root.txt") is not None, (
+        "scan should report the modified root file"
+    )
+    for path in nested:
+        assert find_status_entry(scanned, path) is not None, (
+            f"scan should report the added {path}"
+        )
+
+    # A plain status (current vs staged) must still surface the persisted
+    # nested adds — not just the modified root file.
+    persisted = get_status_files(repo)
+    for path in ("root.txt", *nested):
+        assert find_status_entry(persisted, path) is not None, (
+            f"{path} should persist in plain status after scan"
+        )
+
+    # Stage the repository root from the dirty marks (no --scan). Every dirty
+    # path under root must be staged, including the nested adds.
+    repo.stage(offline=True)
+
+    entries = get_status_files(repo)
+    for path in ("root.txt", *nested):
+        entry = find_status_entry(entries, path)
+        assert entry is not None, f"{path} should appear in status after stage"
+        assert entry["flagStaged"] is True, (
+            f"{path} should be staged by `stage .` from dirty marks"
+        )
+
+    # End-to-end: committing the staged tree lands the nested files in the
+    # committed revision.
+    repo.commit(offline=True)
+    repo.status(reset=True, offline=True)
+    dump = repo.repository_dump()
+    for name in ("alpha.txt", "beta.txt"):
+        assert name in dump, (
+            f"{name} should appear in the committed revision:\n{dump}"
+        )
+
+
 # ===========================================================================
 # Dirty add in new directories, nonexistent paths, ignored paths
 # ===========================================================================

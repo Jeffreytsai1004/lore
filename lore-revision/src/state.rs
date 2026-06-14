@@ -6035,6 +6035,15 @@ async fn diff_filesystem_directory_walk(
                     stats,
                 )
                 .await?;
+                ctx.from
+                    .state
+                    .node_mark_dirty(
+                        ctx.from.repository.clone(),
+                        dir_parent_node,
+                        NodeFlags::Dirty,
+                        false,
+                    )
+                    .await?;
                 dir_from_root = new_dir_id;
                 dir_from_path = child_file_path.clone();
             }
