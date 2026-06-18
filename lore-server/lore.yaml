@@ -1,0 +1,51 @@
+# Lore Server — Docker Compose deployment for Synology NAS DS918+
+#
+# The DS918+ has an Intel Celeron J3455 (x86_64), so standard linux/amd64
+# images work natively.  Build the image on a separate build machine (the
+# NAS has limited RAM for a Rust compilation), export it, and import it on
+# the NAS.  See Synology_NAS_DS918_Deploy_Step.md for the full walkthrough.
+#
+# ------------------------------------------------------------------
+# The image already ships /etc/lore/config/docker.toml which points
+# both stores to /data.  Do NOT mount the whole config directory — it
+# would shadow docker.toml.  Mount individual override files instead.
+# ------------------------------------------------------------------
+
+version: "3.8"
+
+services:
+  lore-server:
+    image: lore-server:latest
+    container_name: lore-server
+    restart: unless-stopped
+
+    # --- ports ----------------------------------------------------------
+    # 41337/tcp  → gRPC
+    # 41337/udp  → QUIC
+    # 41339/tcp  → HTTP (health check, hit it from outside the container)
+    ports:
+      - "41337:41337/tcp"
+      - "41337:41337/udp"
+      - "41339:41339"
+
+    # --- volumes --------------------------------------------------------
+    # /data  — immutable + mutable store (required, read-write)
+    volumes:
+      - /volume1/docker/lore/data:/data
+
+    # Optional overrides — uncomment after you've created each file.
+    # See the deploy guide for generation steps.
+    #
+    #   local.toml  → layers over docker.toml (certificate, store tuning, etc.)
+    #   cert + key  → persistent QUIC TLS certificate
+    #
+    # - /volume1/docker/lore/local.toml:/etc/lore/config/local.toml:ro
+    # - /volume1/docker/lore/certs/cert.pem:/etc/lore/certs/cert.pem:ro
+    # - /volume1/docker/lore/certs/key.pem:/etc/lore/certs/key.pem:ro
+
+    # --- environment ----------------------------------------------------
+    environment:
+      # Loads /etc/lore/config/docker.toml on top of compiled-in defaults.
+      - LORE_ENV=docker
+      # Drop to "debug" for troubleshooting, raise to "warn" in production.
+      - RUST_LOG=info

@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>在 Synology NAS DS918+ 上部署 Lore Server（Docker）</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --card: #ffffff;
+    --text: #1c1917;
+    --muted: #78716c;
+    --border: #e7e5e4;
+    --code-bg: #f5f5f4;
+    --pre-bg: #1c1917;
+    --pre-text: #e7e5e4;
+    --accent: #d97706;
+    --link: #b45309;
+    --warn-bg: #fffbeb;
+    --warn-border: #fde68a;
+    --radius: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.75;
+    font-size: 15px;
+  }
+
+  article {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+    line-height: 1.3;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    margin-bottom: 40px;
+    font-size: 0.95rem;
+  }
+
+  .subtitle a { color: var(--link); }
+
+  h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  h3 {
+    font-size: 1.1rem;
+    font-weight: 650;
+    margin-top: 32px;
+    margin-bottom: 10px;
+  }
+
+  p { margin-bottom: 14px; }
+
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  ul, ol { margin: 10px 0 16px 22px; }
+  li { margin-bottom: 4px; }
+
+  strong { color: #1c1917; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 20px;
+    font-size: 0.9rem;
+  }
+
+  th, td {
+    padding: 10px 14px;
+    text-align: left;
+    border: 1px solid var(--border);
+  }
+
+  th {
+    background: #f5f5f4;
+    font-weight: 650;
+  }
+
+  td code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+
+  pre {
+    background: var(--pre-bg);
+    color: var(--pre-text);
+    padding: 18px 20px;
+    border-radius: var(--radius);
+    overflow-x: auto;
+    margin: 14px 0 20px;
+    font-size: 0.86rem;
+    line-height: 1.65;
+  }
+
+  pre code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", "SF Mono",
+      "Source Code Pro", Menlo, Consolas, monospace;
+  }
+
+  code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", "SF Mono",
+      "Source Code Pro", Menlo, Consolas, monospace;
+    font-size: 0.9em;
+  }
+
+  :not(pre) > code {
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #b45309;
+  }
+
+  pre code { background: transparent; padding: 0; color: inherit; }
+
+  blockquote {
+    border-left: 3px solid var(--warn-border);
+    background: var(--warn-bg);
+    padding: 12px 16px;
+    margin: 14px 0 20px;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    color: #92400e;
+    font-size: 0.92rem;
+  }
+
+  blockquote strong { color: #92400e; }
+
+  blockquote code { background: #fef3c7; color: #92400e; }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 36px 0;
+  }
+
+  .highlight {
+    background: linear-gradient(120deg, #fef3c7 0%, #fef3c7 100%);
+    background-repeat: no-repeat;
+    background-size: 100% 40%;
+    background-position: 0 90%;
+  }
+
+  @media (max-width: 640px) {
+    article { padding: 24px 16px 56px; }
+    h1 { font-size: 1.55rem; }
+    h2 { font-size: 1.2rem; }
+    pre { padding: 14px 16px; font-size: 0.8rem; }
+  }
+
+  @media print {
+    body { background: white; }
+    article { max-width: 100%; }
+    pre { background: #f5f5f4; color: #1c1917; }
+  }
+</style>
+</head>
+<body>
+
+<article>
+
+<h1>在 Synology NAS DS918+ 上部署 Lore Server（Docker）</h1>
+
+<p class="subtitle">
+  本指南介绍如何在 Synology DS918+ 上以 Docker 容器方式部署
+  <strong>Lore Server</strong>（<code>loreserver</code>），让您的局域网内拥有一个持久化、集中式的 Lore 远程仓库。
+  流程参考官方 <a href="https://epicgames.github.io/lore/how-to/deploy-local-lore-server/">Deploy a local Lore Server</a>
+  指南，并针对 Synology DSM 环境做了适配。
+</p>
+
+<!-- ============================================================ -->
+
+<h2>最终效果</h2>
+
+<ul>
+  <li>一个 <code>lore-server</code> 容器在 DS918+ 上运行，开机自启。</li>
+  <li>持久化存储数据保存在 <code>/volume1/docker/lore/data</code>。</li>
+  <li>gRPC（TCP 41337）、QUIC（UDP 41337）、HTTP 健康检查（TCP 41339）端口在 NAS 上开放。</li>
+</ul>
+
+<!-- ============================================================ -->
+
+<h2>1. 了解硬件限制</h2>
+
+<p>
+  DS918+ 搭载 Intel Celeron J3455（4 核，最高 8 GB 内存），<strong>运行</strong>
+  <code>loreserver</code> 绰绰有余——但<strong>编译</strong>容器镜像需要完整的 Rust
+  工具链，链接阶段内存占用可能高达数 GB。因此：在台式机或 CI 机器上编译镜像，再传输到 NAS。
+</p>
+
+<table>
+  <tr><th>操作</th><th>在哪里执行</th></tr>
+  <tr><td><code>docker build</code></td><td>台式机 / 编译机器（Linux amd64）</td></tr>
+  <tr><td><code>docker run</code> / Compose</td><td>Synology DS918+</td></tr>
+</table>
+
+<!-- ============================================================ -->
+
+<h2>2. 准备工作</h2>
+
+<h3>编译机器上</h3>
+<ul>
+  <li>安装了 BuildKit 的 Docker（<code>docker buildx</code>）。</li>
+  <li>Git（用于克隆 Lore 仓库）。</li>
+  <li>至少 8 GB 空闲内存（Rust 编译需要）。</li>
+  <li>能访问 NAS（用于传输编译好的镜像）。</li>
+</ul>
+
+<h3>Synology DS918+ 上</h3>
+<ul>
+  <li><strong>DSM 7.2 或更高版本</strong>（低版本也可用，但 Container Manager 界面不同）。</li>
+  <li><strong>Container Manager</strong>（DSM 的 Docker 套件——从套件中心安装）。</li>
+  <li>已启用 SSH（<strong>控制面板 → 终端机和 SNMP → 启用 SSH 功能</strong>）。</li>
+  <li><code>/volume1</code> 上有足够的磁盘空间，建议至少预留 50 GB。</li>
+  <li>端口 <strong>41337</strong>（TCP + UDP）和 <strong>41339</strong>（TCP）未被其他服务占用。</li>
+</ul>
+
+<!-- ============================================================ -->
+
+<h2>3. 获取容器镜像</h2>
+
+<p>
+  编译 Rust 项目对内存要求较高。以下是四种编译方式，<strong>任选其一</strong>即可——选完直接跳到对应步骤继续。
+</p>
+
+<table>
+  <tr><th>方式</th><th>编译在哪里</th><th>需要传输到 NAS</th><th>适合场景</th></tr>
+  <tr><td><a href="#a">A — Linux amd64 机器</a></td><td>独立 Linux 机器</td><td>是（第 4 节）</td><td>有 Linux 服务器或云主机</td></tr>
+  <tr><td><a href="#b">B — GitHub Actions</a></td><td>GitHub 云端</td><td>否（镜像仓库直拉）</td><td><strong>无 Linux 机器，最省心</strong></td></tr>
+  <tr><td><a href="#c">C — DS918+ 直接编译</a></td><td>NAS 本地</td><td>否</td><td>不想依赖外部机器</td></tr>
+  <tr><td><a href="#d">D — Windows Docker Desktop</a></td><td>本机 Windows</td><td>是（第 4 节）</td><td>Windows 专业版/企业版</td></tr>
+</table>
+
+<!-- ------------------------------------------------------------ -->
+
+<h3 id="a">方式 A — 在 Linux amd64 机器上编译（推荐）</h3>
+<p>适用于有 Linux 物理机、云主机（EC2、轻量云等）或 macOS 的用户。</p>
+
+<h4>A.1 克隆仓库</h4>
+<pre><code>git clone https://github.com/EpicGames/lore.git
+cd lore</code></pre>
+
+<h4>A.2 编译镜像</h4>
+<pre><code>docker build --platform linux/amd64 -f lore-server/Dockerfile -t lore-server .</code></pre>
+
+<blockquote>
+  <strong>为什么要加 <code>--platform linux/amd64</code>？</strong> DS918+ 是 x86_64 架构。如果编译机器
+  也是 x86_64，加上这个参数也没副作用；如果是 Apple Silicon（Arm Mac），则必须加——
+  <code>.cargo/config.toml</code> 中的 <code>linux/arm64</code> 目标是为 AWS Graviton3 调优的，
+  无法在 Apple Silicon 或 DS918+ 上运行。
+</blockquote>
+
+<p>编译耗时：现代台式机大约 10–25 分钟。</p>
+
+<h4>A.3 验证镜像</h4>
+<pre><code>docker image ls lore-server:latest</code></pre>
+
+<h4>A.4 导出镜像</h4>
+<pre><code>docker save lore-server:latest -o lore-server.tar</code></pre>
+
+<blockquote>
+  继续 → <a href="#transfer">第 4 节：传输镜像到 NAS</a>
+</blockquote>
+
+<!-- ------------------------------------------------------------ -->
+
+<h3 id="b">方式 B — GitHub Actions 免费编译（推荐）</h3>
+<p>
+  白嫖 GitHub 的服务器编译，NAS 直接从 GitHub Container Registry 拉取镜像。
+  无需任何本地 Linux 环境，只需一个 GitHub 账号。
+</p>
+<p>
+  GitHub Actions 每月免费 2000 分钟，单次编译约 15 分钟，个人使用完全够。
+</p>
+
+<h4>B.1 Fork 仓库并创建 Workflow</h4>
+<p>
+  Fork <a href="https://github.com/EpicGames/lore">EpicGames/lore</a> 到你的 GitHub 账号，
+  然后在仓库中创建 <code>.github/workflows/build.yml</code>：
+</p>
+<pre><code>name: Build lore-server image
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # 允许在 GitHub 网页上手动触发
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: lore-server/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max</code></pre>
+
+<blockquote>
+  使用了 <code>docker/build-push-action</code> 内置的 GitHub Actions 缓存——第二次编译会复用
+  之前的 Rust 依赖和 target 缓存，耗时降至 3–5 分钟。
+</blockquote>
+
+<h4>B.2 触发编译</h4>
+<p>
+  提交并推送 <code>build.yml</code> 后，编译会自动开始。也可以在仓库页面的 <strong>Actions</strong> 标签中
+  手动点击 <strong>Run workflow</strong> 触发。
+</p>
+
+<h4>B.3 在 NAS 上拉取镜像</h4>
+<p>编译完成后（Actions 页面显示绿色 ✓），SSH 到 NAS：</p>
+<pre><code># 登录 GitHub Container Registry（需要先创建 Personal Access Token）
+echo "你的GitHub_TOKEN" | sudo docker login ghcr.io -u 你的GitHub用户名 --password-stdin
+
+# 拉取镜像
+sudo docker pull ghcr.io/你的GitHub用户名/lore:latest
+
+# 打上本地标签（lore.yaml 里引用的名字）
+sudo docker tag ghcr.io/你的GitHub用户名/lore:latest lore-server:latest</code></pre>
+
+<blockquote>
+  创建 GitHub Token：<strong>GitHub → Settings → Developer settings → Personal access
+  tokens (classic)</strong> → 勾选 <code>read:packages</code> → 生成后复制。
+</blockquote>
+
+<blockquote>
+  直接跳到 → <a href="#config-nas">第 5 节：配置 NAS</a>（无需传输）
+</blockquote>
+
+<!-- ------------------------------------------------------------ -->
+
+<h3 id="c">方式 C — 直接在 DS918+ 上编译</h3>
+<p>
+  NAS 本地编译，省去传输步骤。缺点是慢（J3455 4 核），且链接阶段可能触发 OOM。
+</p>
+
+<h4>C.1 克隆仓库</h4>
+<pre><code>cd /volume1/docker
+git clone https://github.com/EpicGames/lore.git
+cd lore</code></pre>
+
+<h4>C.2 编译镜像</h4>
+<pre><code>docker build --platform linux/amd64 -f lore-server/Dockerfile -t lore-server .</code></pre>
+<p>
+  如果遇到内存不足（OOM），可以在 Container Manager 中给 Docker 增加 swap，
+  或者限制 Rust 并行度——但需要修改 Dockerfile 中的 <code>cargo build</code> 行，加上
+  <code>--jobs 2</code> 参数后再编译。
+</p>
+<p>编译耗时：预计 45–90 分钟，取决于 NAS 负载。</p>
+
+<blockquote>
+  直接跳到 → <a href="#config-nas">第 5 节：配置 NAS</a>（无需传输）
+</blockquote>
+
+<!-- ------------------------------------------------------------ -->
+
+<h3 id="d">方式 D — Windows Docker Desktop（Hyper-V 后端）</h3>
+<p>
+  如果你的 Windows 是专业版/企业版，可以不用 WSL2，改用 Hyper-V 后端运行 Docker。
+</p>
+
+<h4>D.1 启用 Hyper-V</h4>
+<p>
+  <strong>控制面板 → 程序和功能 → 启用或关闭 Windows 功能</strong> → 勾选 <strong>Hyper-V</strong> → 确定 → 重启。
+</p>
+<blockquote>
+  CPU 必须开启虚拟化（VT-x），在 BIOS 中确认。
+</blockquote>
+
+<h4>D.2 安装 Docker Desktop</h4>
+<p>
+  从 <a href="https://www.docker.com/products/docker-desktop/">docker.com</a> 下载安装。
+  安装时<strong>选择 Hyper-V 后端</strong>（而非 WSL2 backend）。
+</p>
+
+<h4>D.3 编译并导出</h4>
+<p>打开 PowerShell：</p>
+<pre><code>git clone https://github.com/EpicGames/lore.git
+cd lore
+docker build --platform linux/amd64 -f lore-server/Dockerfile -t lore-server .
+docker save lore-server:latest -o lore-server.tar</code></pre>
+
+<blockquote>
+  继续 → <a href="#transfer">第 4 节：传输镜像到 NAS</a>
+</blockquote>
+
+<!-- ============================================================ -->
+
+<h2 id="transfer">4. 将镜像传输到 Synology NAS</h2>
+
+<blockquote>
+  仅<strong>方式 A</strong> 和<strong>方式 D</strong> 需要此步骤。方式 B（GitHub Actions）直接拉取，方式 C（NAS 编译）镜像已在本地。
+</blockquote>
+
+<h3>方式一 — SCP（推荐）</h3>
+<pre><code>scp lore-server.tar your-user@your-nas-ip:/volume1/docker/</code></pre>
+
+<h3>方式二 — U 盘</h3>
+<p>
+  将 <code>lore-server.tar</code> 拷贝到 U 盘，插入 NAS，在 File Station 中将其移动到
+  <code>/volume1/docker/</code>。
+</p>
+
+<!-- ============================================================ -->
+
+<h2 id="config-nas">5. 配置 NAS</h2>
+<p>SSH 登录 NAS。（也可以使用 <strong>Container Manager → 项目</strong>，然后跳到 5.2。）</p>
+
+<h3>5.1 创建目录结构</h3>
+<pre><code>sudo mkdir -p /volume1/docker/lore/data</code></pre>
+<p>这是唯一的必建目录——存放不可变存储和可变存储的数据。</p>
+<p>如果后续要使用持久化证书（步骤 5.4），还需创建：</p>
+<pre><code>sudo mkdir -p /volume1/docker/lore/certs</code></pre>
+
+<h3>5.2 加载镜像</h3>
+
+<blockquote>
+  <strong>方式 B（GitHub Actions）用户</strong>：镜像已通过 <code>docker pull</code> 拉取并打好标签，跳过此步。<br>
+  <strong>方式 C（NAS 编译）用户</strong>：镜像编译后已在本地镜像列表中，跳过此步。
+</blockquote>
+
+<pre><code>sudo docker load -i /volume1/docker/lore-server.tar</code></pre>
+<p>确认镜像已加载：</p>
+<pre><code>sudo docker image ls lore-server:latest</code></pre>
+
+<h3>5.3 复制 Compose 文件</h3>
+<p>将与本指南同目录的 <code>lore.yaml</code> 放到 NAS 上：</p>
+<pre><code>scp lore.yaml your-user@your-nas-ip:/volume1/docker/lore/</code></pre>
+
+<h3>5.4（可选）持久化 TLS 证书</h3>
+<p>
+  默认情况下，服务器在每次启动时生成临时的自签名证书——能用，
+  但容器每次重启后客户端会看到不同的证书。如需持久化证书，在 NAS 上执行：
+</p>
+<pre><code>sudo openssl req -x509 -newkey rsa:2048 -nodes \
+  -keyout /volume1/docker/lore/certs/key.pem \
+  -out /volume1/docker/lore/certs/cert.pem \
+  -days 3650 \
+  -subj "/CN=&lt;你的NAS主机名&gt;" \
+  -addext "subjectAltName=IP:&lt;你的NAS-IP&gt;,DNS:&lt;你的NAS主机名&gt;"</code></pre>
+<p>
+  将 <code>&lt;你的NAS主机名&gt;</code> 和 <code>&lt;你的NAS-IP&gt;</code> 替换为实际值（如
+  <code>mynas.local</code> 和 <code>192.168.1.50</code>）。
+</p>
+
+<h3>5.5（可选）创建 <code>local.toml</code> 配置覆盖</h3>
+<p>
+  镜像中已内置 <code>/etc/lore/config/docker.toml</code>，将两个存储都指向 <code>/data</code>。
+  如需进一步自定义——持久化证书、存储容量限制、日志级别等——
+  在 NAS 上创建 <code>/volume1/docker/lore/local.toml</code>。
+</p>
+<p>以下示例引用步骤 5.4 中生成的持久化证书：</p>
+<pre><code>[server.quic.certificate]
+cert_file = "/etc/lore/certs/cert.pem"
+pkey_file = "/etc/lore/certs/key.pem"</code></pre>
+<p>然后在 <code>lore.yaml</code> 的 <code>volumes</code> 部分取消对应行的注释：</p>
+<pre><code>- /volume1/docker/lore/local.toml:/etc/lore/config/local.toml:ro
+- /volume1/docker/lore/certs/cert.pem:/etc/lore/certs/cert.pem:ro
+- /volume1/docker/lore/certs/key.pem:/etc/lore/certs/key.pem:ro</code></pre>
+
+<blockquote>
+  <strong>重要：</strong>挂载单个文件，不要挂载整个 <code>/etc/lore/config</code> 目录。
+  挂载整个目录会覆盖镜像内置的 <code>docker.toml</code>，导致服务器丢失存储路径配置。
+  官方 Docker 部署指南也是采用同样的单文件挂载方式。
+</blockquote>
+
+<!-- ============================================================ -->
+
+<h2>6. 部署容器</h2>
+
+<h3>方式 A — Container Manager 界面（DSM 7.2+）</h3>
+<ol>
+  <li>打开 <strong>Container Manager</strong>。</li>
+  <li>进入 <strong>项目</strong> → <strong>新增</strong>。</li>
+  <li>填写项目名称（如 <code>lore</code>）。</li>
+  <li>设置路径为 <code>/volume1/docker/lore</code>，选择 <code>lore.yaml</code>。</li>
+  <li>（可选）<strong>Web 门户</strong>可以跳过——Lore 没有 Web 界面。</li>
+  <li>点击 <strong>下一步</strong>，确认后点击 <strong>完成</strong>。</li>
+</ol>
+<p>Container Manager 在后台执行 <code>docker compose up -d</code>。</p>
+
+<h3>方式 B — 命令行</h3>
+<pre><code>cd /volume1/docker/lore
+sudo docker compose -f lore.yaml up -d</code></pre>
+
+<!-- ============================================================ -->
+
+<h2>7. 验证部署</h2>
+
+<h3>7.1 检查容器是否运行</h3>
+<pre><code>sudo docker ps --filter "name=lore-server"</code></pre>
+
+<h3>7.2 查看日志</h3>
+<pre><code>sudo docker logs lore-server</code></pre>
+<p>正常启动应看到类似以下日志：</p>
+<pre><code>INFO  loreserver: Lore Server starting…
+INFO  loreserver: HTTP health-check endpoint listening on 0.0.0.0:41339
+INFO  loreserver: gRPC endpoint listening on 0.0.0.0:41337
+INFO  loreserver: QUIC endpoint listening on 0.0.0.0:41337</code></pre>
+
+<h3>7.3 访问健康检查端点</h3>
+<p>从局域网内任意机器执行：</p>
+<pre><code>curl -i http://&lt;你的NAS-IP&gt;:41339/health_check</code></pre>
+<p>正常返回：<code>HTTP/1.1 200 OK</code>，响应体为空。</p>
+
+<!-- ============================================================ -->
+
+<h2>8. 连接 Lore 客户端</h2>
+<p>在安装了 <code>lore</code> CLI 的工作站上，将远程指向 NAS：</p>
+<pre><code># 远程地址格式：lore://&lt;主机&gt;:&lt;端口&gt;
+lore remote add origin lore://&lt;你的NAS-IP&gt;:41337</code></pre>
+<p>
+  之后即可正常执行 clone、push、pull 等操作。完整工作流参见
+  <a href="https://epicgames.github.io/lore/tutorials/quickstart/">Lore 快速入门</a>。
+</p>
+
+<blockquote>
+  <strong>TLS 说明：</strong>默认情况下服务器使用临时自签名证书，Lore CLI
+  首次连接时会提示警告——接受即可（或安装步骤 5.4 的持久化证书并在客户端信任）。
+</blockquote>
+
+<!-- ============================================================ -->
+
+<h2>9. 日常运维</h2>
+
+<table>
+  <tr><th>操作</th><th>命令（在 NAS 上执行）</th></tr>
+  <tr><td>停止</td><td><code>sudo docker stop lore-server</code></td></tr>
+  <tr><td>启动</td><td><code>sudo docker start lore-server</code></td></tr>
+  <tr><td>重启</td><td><code>sudo docker restart lore-server</code></td></tr>
+  <tr><td>查看日志</td><td><code>sudo docker logs -f lore-server</code></td></tr>
+  <tr><td>更新镜像</td><td>重新编译 → <code>docker save</code> → 拷贝 → <code>docker load</code> → 重启</td></tr>
+  <tr><td>进入容器</td><td><code>sudo docker exec -it lore-server /bin/bash</code></td></tr>
+</table>
+
+<!-- ============================================================ -->
+
+<h2>故障排查</h2>
+
+<h3>容器启动后立刻退出</h3>
+<p>查看日志：<code>sudo docker logs lore-server</code>。常见原因：</p>
+<ul>
+  <li>NAS 上端口 41337 已被占用（例如其他容器或 DSM 服务）。</li>
+  <li><code>/volume1/docker/lore/data</code> 目录对容器用户不可写。</li>
+</ul>
+
+<h3>取消 <code>lore.yaml</code> 中挂载注释后启动失败</h3>
+<p>
+  Docker 绑定挂载要求源文件必须存在。在取消注释之前，请先在 NAS 上
+  创建好 <code>local.toml</code>、<code>cert.pem</code> 和 <code>key.pem</code>。
+</p>
+
+<h3>健康检查端点无法访问</h3>
+<p>检查 DSM 防火墙是否拦截了 41337 和 41339 端口：</p>
+<p><strong>控制面板 → 安全性 → 防火墙 → 编辑规则</strong> → 为端口 41337（TCP + UDP）
+  和 41339（TCP）添加允许规则。</p>
+
+<h3>客户端无法连接</h3>
+<ul>
+  <li>确认客户端能 ping 通 NAS IP。</li>
+  <li>确认 TCP 和 UDP 的 41337 端口均已映射（gRPC 用 TCP，QUIC 用 UDP）。</li>
+  <li>查看服务器日志是否有证书或绑定错误。</li>
+</ul>
+
+<h3>编译机器上构建失败</h3>
+<ul>
+  <li>确保 <code>protobuf-compiler</code> 可用（Dockerfile 会自动安装）。</li>
+  <li>增加 Docker 内存限制（最终二进制链接阶段可能超过 4 GB）。</li>
+</ul>
+
+<h3>NAS 上报 "exec format error"</h3>
+<p>
+  镜像架构错误。请按步骤 3.2 中的方式重新编译，加上
+  <code>--platform linux/amd64</code>。
+</p>
+
+</article>
+</body>
+</html>
