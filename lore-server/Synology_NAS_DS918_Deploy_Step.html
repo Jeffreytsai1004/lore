@@ -336,6 +336,8 @@ jobs:
           file: lore-server/Dockerfile
           platforms: linux/amd64
           push: true
+          build-args: |
+            LORE_BUILD_VERSION_NAME=${{ github.sha }}
           # 使用转换后的小写仓库名
           tags: ${{ env.REGISTRY }}/${{ env.REPO_LOWER }}:latest
           cache-from: type=gha

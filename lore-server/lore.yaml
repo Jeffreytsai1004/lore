@@ -39,9 +39,9 @@ services:
     #   local.toml  → layers over docker.toml (certificate, store tuning, etc.)
     #   cert + key  → persistent QUIC TLS certificate
     #
-    # - /volume1/docker/lore/local.toml:/etc/lore/config/local.toml:ro
-    # - /volume1/docker/lore/certs/cert.pem:/etc/lore/certs/cert.pem:ro
-    # - /volume1/docker/lore/certs/key.pem:/etc/lore/certs/key.pem:ro
+      - /volume1/docker/lore/local.toml:/etc/lore/config/local.toml:ro
+      - /volume1/docker/lore/certs/cert.pem:/etc/lore/certs/cert.pem:ro
+      - /volume1/docker/lore/certs/key.pem:/etc/lore/certs/key.pem:ro
 
     # --- environment ----------------------------------------------------
     environment:

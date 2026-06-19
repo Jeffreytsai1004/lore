@@ -8,6 +8,10 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /build
 COPY . .
 
+# Set build version name to avoid calling the lore CLI binary (not available during build)
+ARG LORE_BUILD_VERSION_NAME=0.0.0-docker
+ENV LORE_BUILD_VERSION_NAME=${LORE_BUILD_VERSION_NAME}
+
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/build/target \
